@@ -12,6 +12,7 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from std_msgs.msg import Float64
+from std_srvs.srv import Empty
 from tf2_ros import StaticTransformBroadcaster, TransformBroadcaster
 
 from polimi_sim.common.ros_utils import (
@@ -61,6 +62,7 @@ class OdomModelNode(Node):
         self._pose_covariance: list[float] = list(p['pose_covariance_diagonal'])
         self._twist_covariance: list[float] = list(p['twist_covariance_diagonal'])
         self._true_speed: float | None = None
+        self._pin_static: bool = True
         self._true_pose: Pose2D = Pose2D(0.0, 0.0, 0.0)
         self._map_frame: str = 'map'
         self._track_truth: bool = p['debug_map_to_odom'] == 'truth'
@@ -81,7 +83,15 @@ class OdomModelNode(Node):
         self._steer_sub = self.create_subscription(
             Float64, p['steering_command_topic'], self._on_steering_command, 10
         )
+        self._reset_srv = self.create_service(Empty, '~/reset', self._on_reset)
         self._timer = self.create_timer(1.0 / p['rate_hz'], self._on_timer)
+
+    def _on_reset(self, request: Empty.Request, response: Empty.Response) -> Empty.Response:
+        """Zero the odometry, e.g. after the car was moved by hand with /initialpose."""
+        self._odometry.reset()
+        self._pin_static = True
+        self.get_logger().info('odometry reset to the origin')
+        return response
 
     def _on_set_parameters(self, params: list[Parameter]) -> SetParametersResult:
         try:
@@ -91,8 +101,8 @@ class OdomModelNode(Node):
         return SetParametersResult(successful=True)
 
     def _on_truth(self, msg: Odometry) -> None:
-        if self._true_speed is None and self._static_tf is not None:
-            # Odometry starts at 0: pin odom on the true start pose so both can be overlaid.
+        if self._pin_static and self._static_tf is not None:
+            # Odometry starts at 0: pin odom on the true pose of that moment so both can be overlaid.
             tf = TransformStamped()
             tf.header.stamp = msg.header.stamp
             tf.header.frame_id = msg.header.frame_id
@@ -101,6 +111,7 @@ class OdomModelNode(Node):
             tf.transform.translation.y = msg.pose.pose.position.y
             tf.transform.rotation = msg.pose.pose.orientation
             self._static_tf.sendTransform(tf)
+        self._pin_static = False
         self._true_speed = msg.twist.twist.linear.x
         self._map_frame = msg.header.frame_id
         self._true_pose = Pose2D(

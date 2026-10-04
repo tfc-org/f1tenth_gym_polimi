@@ -41,6 +41,10 @@ class WheelOdometry:
         self._rng: np.random.Generator = rng
         self.state: OdomState = OdomState()
 
+    def reset(self) -> None:
+        """Back to the origin, as after a restart of the VESC odometry."""
+        self.state = OdomState()
+
     def update(self, dt: float, true_speed: float, steering_command: float) -> OdomState:
         """Advance by dt seconds with the true longitudinal speed and the commanded steering."""
         cfg = self.config

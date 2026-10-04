@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from polimi_sim.odom.model import OdomConfig, WheelOdometry
+from polimi_sim.odom.model import OdomConfig, OdomState, WheelOdometry
 
 DT = 0.02
 QUIET = dict(speed_scale_error=0.0, speed_noise_std=0.0)
@@ -48,6 +48,15 @@ def test_noise_is_seeded() -> None:
         return state.x
     assert run(5) == run(5)
     assert run(5) != run(6)
+
+
+def test_reset_goes_back_to_the_origin() -> None:
+    odom = WheelOdometry(OdomConfig(**QUIET), np.random.default_rng(1))
+    for _ in range(100):
+        odom.update(DT, 2.0, 0.2)
+    assert odom.state.x != 0.0 and odom.state.yaw != 0.0
+    odom.reset()
+    assert odom.state == OdomState()
 
 
 def test_config_is_validated() -> None:
