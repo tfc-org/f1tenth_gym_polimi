@@ -14,15 +14,15 @@ from rclpy.parameter import Parameter
 from std_msgs.msg import Float64
 from tf2_ros import StaticTransformBroadcaster, TransformBroadcaster
 
-from polimi_sim.odom import OdomConfig, WheelOdometry
-from polimi_sim.ros_utils import (
+from polimi_sim.common.ros_utils import (
     RelativeClock,
     declare,
     quaternion_from_yaw,
     with_updates,
     yaw_from_quaternion,
 )
-from polimi_sim.se2 import Pose2D, compose, inverse
+from polimi_sim.common.se2 import Pose2D, compose, inverse
+from polimi_sim.odom.model import OdomConfig, WheelOdometry
 
 MAP_TO_ODOM_MODES: tuple[str, ...] = ('off', 'static', 'truth')
 
@@ -168,8 +168,7 @@ def main(args: list[str] | None = None) -> None:
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
-        node.destroy_node()
-        rclpy.try_shutdown()
+        node.destroy_node()  # no rclpy.shutdown(): after a signal the context is already down
 
 
 if __name__ == '__main__':

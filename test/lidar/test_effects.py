@@ -3,7 +3,8 @@ import math
 import numpy as np
 import pytest
 
-from polimi_sim.lidar_effects import (
+from polimi_sim.common.se2 import Pose2D
+from polimi_sim.lidar.effects import (
     CastFn,
     EffectsConfig,
     FloatArray,
@@ -17,7 +18,6 @@ from polimi_sim.lidar_effects import (
     scan_geometry,
     valid_returns,
 )
-from polimi_sim.se2 import Pose2D
 
 SL450 = scan_geometry(40.0, 270.0, 0.2)
 INC = SL450.angle_increment

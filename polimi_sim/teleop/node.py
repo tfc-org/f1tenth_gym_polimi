@@ -9,8 +9,8 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 
-from polimi_sim.ros_utils import declare, with_updates
-from polimi_sim.teleop import ANGULAR_MODES, twist_to_ackermann
+from polimi_sim.common.ros_utils import declare, with_updates
+from polimi_sim.teleop.conversion import ANGULAR_MODES, twist_to_ackermann
 
 TUNABLE: tuple[str, ...] = ('angular_mode', 'wheelbase', 'max_steer', 'min_speed')
 
@@ -73,8 +73,7 @@ def main(args: list[str] | None = None) -> None:
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
-        node.destroy_node()
-        rclpy.try_shutdown()
+        node.destroy_node()  # no rclpy.shutdown(): after a signal the context is already down
 
 
 if __name__ == '__main__':

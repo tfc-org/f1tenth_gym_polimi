@@ -1,6 +1,6 @@
 import pytest
 
-from polimi_sim.actuation import ActuationConfig, ActuationModel, DelayLine
+from polimi_sim.actuation.model import ActuationConfig, ActuationModel, DelayLine
 
 DT = 0.01
 FAST = dict(servo_rate=1e6, accel_max=1e6, brake_max=1e6)

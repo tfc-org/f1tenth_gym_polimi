@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from polimi_sim.teleop import twist_to_ackermann
+from polimi_sim.teleop.conversion import twist_to_ackermann
 
 ARGS = dict(wheelbase=0.33, max_steer=0.4189, min_speed=0.5)
 

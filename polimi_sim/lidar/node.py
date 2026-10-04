@@ -13,16 +13,16 @@ from rclpy.node import Node
 from rclpy.parameter import Parameter
 from sensor_msgs.msg import LaserScan
 
-from polimi_sim.lidar_effects import (
+from polimi_sim.common.ros_utils import RelativeClock, declare, with_updates, yaw_from_quaternion
+from polimi_sim.common.se2 import Pose2D, PoseBuffer, Twist2D
+from polimi_sim.lidar.effects import (
     EffectsConfig,
     ScanGeometry,
     apply_effects,
     distorted_scan,
     scan_geometry,
 )
-from polimi_sim.raycast import BlockCaster, load_gym_track
-from polimi_sim.ros_utils import RelativeClock, declare, with_updates, yaw_from_quaternion
-from polimi_sim.se2 import Pose2D, PoseBuffer, Twist2D
+from polimi_sim.lidar.raycast import BlockCaster, load_gym_track
 
 SL450_RATES_HZ: tuple[float, ...] = (15.0, 20.0, 25.0, 30.0, 40.0)
 
@@ -164,8 +164,7 @@ def main(args: list[str] | None = None) -> None:
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
-        node.destroy_node()
-        rclpy.try_shutdown()
+        node.destroy_node()  # no rclpy.shutdown(): after a signal the context is already down
 
 
 if __name__ == '__main__':

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-from polimi_sim.se2 import Pose2D, compose
+from polimi_sim.common.se2 import Pose2D, compose
 
 FloatArray = NDArray[np.float64]
 BoolArray = NDArray[np.bool_]

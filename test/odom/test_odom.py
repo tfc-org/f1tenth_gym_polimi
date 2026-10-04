@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from polimi_sim.odom import OdomConfig, WheelOdometry
+from polimi_sim.odom.model import OdomConfig, WheelOdometry
 
 DT = 0.02
 QUIET = dict(speed_scale_error=0.0, speed_noise_std=0.0)

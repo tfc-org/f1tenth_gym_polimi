@@ -6,8 +6,8 @@ import yaml
 from f1tenth_gym.envs.lidar.laser_models import ScanSimulator2D, get_scan
 from f1tenth_gym.envs.track import Track
 
-from polimi_sim.lidar_effects import FloatArray, ScanGeometry
-from polimi_sim.se2 import Pose2D
+from polimi_sim.common.se2 import Pose2D
+from polimi_sim.lidar.effects import FloatArray, ScanGeometry
 
 
 def load_gym_track(sim_config: str) -> Track:

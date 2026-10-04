@@ -23,10 +23,10 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'lidar_model = polimi_sim.lidar_model_node:main',
-            'actuation_model = polimi_sim.actuation_model_node:main',
-            'odom_model = polimi_sim.odom_model_node:main',
-            'teleop_bridge = polimi_sim.teleop_bridge_node:main',
+            'lidar_model = polimi_sim.lidar.node:main',
+            'actuation_model = polimi_sim.actuation.node:main',
+            'odom_model = polimi_sim.odom.node:main',
+            'teleop_bridge = polimi_sim.teleop.node:main',
         ],
     },
 )

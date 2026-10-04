@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from polimi_sim.se2 import (
+from polimi_sim.common.se2 import (
     Pose2D,
     PoseBuffer,
     Twist2D,

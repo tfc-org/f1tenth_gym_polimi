@@ -8,9 +8,9 @@ import pytest
 pytest.importorskip('f1tenth_gym')
 pytest.importorskip('f1tenth_gym_ros')
 
-from polimi_sim.lidar_effects import distorted_scan, scan_geometry  # noqa: E402
-from polimi_sim.raycast import BlockCaster, load_gym_track  # noqa: E402
-from polimi_sim.se2 import Pose2D  # noqa: E402
+from polimi_sim.common.se2 import Pose2D  # noqa: E402
+from polimi_sim.lidar.effects import distorted_scan, scan_geometry  # noqa: E402
+from polimi_sim.lidar.raycast import BlockCaster, load_gym_track  # noqa: E402
 
 SIM_CONFIG = os.path.expanduser('~/ws/config/sim/levine.yaml')
 pytestmark = pytest.mark.skipif(not os.path.isfile(SIM_CONFIG), reason='no gym config')
