@@ -1,0 +1,19 @@
+# odom_model: VESC-like wheel odometry. Topic and frames match f1tenth_stack's vesc.yaml.
+/**:
+  ros__parameters:
+    rate_hz: 50.0              # vesc_driver polls the VESC every 20 ms
+    publish_tf: true
+    odom_frame: 'odom'
+    base_frame: 'base_link'
+    seed: 0                    # 0 = different every run
+    debug_map_to_odom: false   # true only with no SLAM / localization running
+
+    # Can be changed while running.
+    wheelbase: 0.3302          # m, gym f1tenth (lf + lr). The car's vesc.yaml has 0.25 [MEASURE]
+    speed_scale_error: 0.02    # measured = true * (1 + this)
+    speed_noise_std: 0.02      # m/s
+    speed_deadband: 0.05       # m/s, vesc_to_odom zeroes slower readings
+
+    # x, y, z, roll, pitch, yaw: vesc_to_odom's values (it leaves the twist covariance at 0).
+    pose_covariance_diagonal: [0.2, 0.2, 0.0, 0.0, 0.0, 0.4]
+    twist_covariance_diagonal: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]

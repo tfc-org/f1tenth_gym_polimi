@@ -1,0 +1,7 @@
+# teleop_bridge: /cmd_vel (Twist) -> /teleop (mux priority 100). All values can be changed while running.
+/**:
+  ros__parameters:
+    angular_mode: 'steering_angle'   # angular.z is rad of steering | 'yaw_rate': atan(L * w / v)
+    wheelbase: 0.3302                # m, yaw_rate mode only
+    max_steer: 0.4189                # rad
+    min_speed: 0.5                   # m/s, yaw_rate mode: |v| used in the formula never goes below this

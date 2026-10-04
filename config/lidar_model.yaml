@@ -1,0 +1,23 @@
+# lidar_model: Orbbec Pulsar SL450 on top of the gym's ray caster.
+# The effect parameters (second block) can be changed while running: ros2 param set /lidar_model noise_std 0.0
+/**:
+  ros__parameters:
+    rate_hz: 40.0              # SL450: 15 / 20 / 25 / 30 / 40
+    fov_deg: 270.0
+    resolution_deg: 0.2
+    blocks: 8                  # beam blocks per scan for motion distortion; 1 = no distortion
+    publish_delay: 0.002       # s between the last beam and the message [VERIFY] driver latency
+    stamp_at: 'start'          # 'start' | 'end' of the sweep [VERIFY] SL450 driver convention
+    seed: 0                    # 0 = different every run
+
+    effects_enabled: true      # false = ideal ranges (no_return_value still applies)
+    range_min: 0.05            # m
+    range_max: 25.0            # m, what the driver reports (fixed at start)
+    no_return_value: 'inf'     # REP 117; any float as a string, e.g. '0.0' [VERIFY] what the driver emits
+    noise_std: 0.01            # m; 0.0 = off
+    dropout_prob: 0.002        # per beam; 0.0 = off
+    grazing_max_deg: 80.0      # incidence beyond this can be lost
+    grazing_dropout_prob: 0.5  # 0.0 = off
+    reflectivity_range_max: 15.0   # m, SL450 at 10% reflectivity; 0.0 = off
+    mixed_pixel_jump: 0.3      # m, depth jump that counts as an edge
+    mixed_pixel_prob: 0.3      # 0.0 = off

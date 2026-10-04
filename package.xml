@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>polimi_sim</name>
+  <version>0.1.0</version>
+  <description>Car-faithful layer on top of f1tenth_gym_ros: LiDAR, actuation and wheel-odometry models, the car's mux and frames.</description>
+  <maintainer email="tommasofabrizio.costantini@mail.polimi.it">TF-Costantini</maintainer>
+  <license>MIT</license>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>ackermann_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>ackermann_mux</exec_depend>
+  <exec_depend>f1tenth_stack</exec_depend>
+  <!-- Also needs f1tenth_gym (pip) and f1tenth_gym_ros (/opt/sim_ws underlay). Not listed:
+       rosdep has no key for them and the image build would fail. -->
+
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
