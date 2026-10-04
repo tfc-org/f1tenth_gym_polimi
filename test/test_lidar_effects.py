@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from polimi_sim.lidar_effects import (
+    CastFn,
     EffectsConfig,
     FloatArray,
     apply_effects,
@@ -30,7 +31,7 @@ def angles() -> FloatArray:
     return SL450.angle_min + np.arange(SL450.num_beams) * INC
 
 
-def wall_ahead(distance: float):
+def wall_ahead(distance: float) -> CastFn:
     """Caster for a wall at x = distance (laser looking along +x when yaw = 0)."""
     def cast(laser: Pose2D, start: int, stop: int) -> FloatArray:
         beam = laser.yaw + angles()[start:stop]

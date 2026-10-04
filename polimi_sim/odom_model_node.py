@@ -15,7 +15,16 @@ from std_msgs.msg import Float64
 from tf2_ros import StaticTransformBroadcaster, TransformBroadcaster
 
 from polimi_sim.odom import OdomConfig, WheelOdometry
-from polimi_sim.ros_utils import RelativeClock, declare, quaternion_from_yaw, with_updates
+from polimi_sim.ros_utils import (
+    RelativeClock,
+    declare,
+    quaternion_from_yaw,
+    with_updates,
+    yaw_from_quaternion,
+)
+from polimi_sim.se2 import Pose2D, compose, inverse
+
+MAP_TO_ODOM_MODES: tuple[str, ...] = ('off', 'static', 'truth')
 
 
 class OdomModelNode(Node):
@@ -30,7 +39,7 @@ class OdomModelNode(Node):
             'publish_tf': True,
             'rate_hz': 50.0,
             'seed': 0,
-            'debug_map_to_odom': False,
+            'debug_map_to_odom': 'off',
             # x, y, z, roll, pitch, yaw. Defaults are vesc_to_odom's (it leaves the twist at 0).
             'pose_covariance_diagonal': [0.2, 0.2, 0.0, 0.0, 0.0, 0.4],
             'twist_covariance_diagonal': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -39,6 +48,8 @@ class OdomModelNode(Node):
         config = OdomConfig(**declare(self, asdict(OdomConfig())))
         if p['rate_hz'] <= 0.0:
             raise ValueError('rate_hz must be > 0')
+        if p['debug_map_to_odom'] not in MAP_TO_ODOM_MODES:
+            raise ValueError(f'debug_map_to_odom must be one of {MAP_TO_ODOM_MODES}')
         for name in ('pose_covariance_diagonal', 'twist_covariance_diagonal'):
             if len(p[name]) != 6:
                 raise ValueError(f'{name} needs 6 values')
@@ -50,12 +61,18 @@ class OdomModelNode(Node):
         self._pose_covariance: list[float] = list(p['pose_covariance_diagonal'])
         self._twist_covariance: list[float] = list(p['twist_covariance_diagonal'])
         self._true_speed: float | None = None
+        self._true_pose: Pose2D = Pose2D(0.0, 0.0, 0.0)
+        self._map_frame: str = 'map'
+        self._track_truth: bool = p['debug_map_to_odom'] == 'truth'
         self._steering_command: float | None = None
         self._last_update: float | None = None
 
-        self._tf: TransformBroadcaster | None = TransformBroadcaster(self) if p['publish_tf'] else None
+        self._tf: TransformBroadcaster | None = (
+            TransformBroadcaster(self) if p['publish_tf'] or self._track_truth else None
+        )
+        self._publish_odom_tf: bool = p['publish_tf']
         self._static_tf: StaticTransformBroadcaster | None = (
-            StaticTransformBroadcaster(self) if p['debug_map_to_odom'] else None
+            StaticTransformBroadcaster(self) if p['debug_map_to_odom'] == 'static' else None
         )
 
         self.add_on_set_parameters_callback(self._on_set_parameters)
@@ -85,6 +102,12 @@ class OdomModelNode(Node):
             tf.transform.rotation = msg.pose.pose.orientation
             self._static_tf.sendTransform(tf)
         self._true_speed = msg.twist.twist.linear.x
+        self._map_frame = msg.header.frame_id
+        self._true_pose = Pose2D(
+            msg.pose.pose.position.x,
+            msg.pose.pose.position.y,
+            yaw_from_quaternion(msg.pose.pose.orientation),
+        )
 
     def _on_steering_command(self, msg: Float64) -> None:
         self._steering_command = msg.data
@@ -114,7 +137,7 @@ class OdomModelNode(Node):
             odom.twist.covariance[7 * i] = self._twist_covariance[i]
         self._odom_pub.publish(odom)
 
-        if self._tf is not None:
+        if self._tf is not None and self._publish_odom_tf:
             tf = TransformStamped()
             tf.header.stamp = stamp
             tf.header.frame_id = self._odom_frame
@@ -122,6 +145,18 @@ class OdomModelNode(Node):
             tf.transform.translation.x = state.x
             tf.transform.translation.y = state.y
             tf.transform.rotation = orientation
+            self._tf.sendTransform(tf)
+
+        if self._tf is not None and self._track_truth:
+            # A perfect localizer: map -> odom that puts base_link on the true pose.
+            correction = compose(self._true_pose, inverse(Pose2D(state.x, state.y, state.yaw)))
+            tf = TransformStamped()
+            tf.header.stamp = stamp
+            tf.header.frame_id = self._map_frame
+            tf.child_frame_id = self._odom_frame
+            tf.transform.translation.x = correction.x
+            tf.transform.translation.y = correction.y
+            tf.transform.rotation = quaternion_from_yaw(correction.yaw)
             self._tf.sendTransform(tf)
 
 

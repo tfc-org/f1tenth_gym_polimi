@@ -6,7 +6,10 @@
     odom_frame: 'odom'
     base_frame: 'base_link'
     seed: 0                    # 0 = different every run
-    debug_map_to_odom: false   # true only with no SLAM / localization running
+    # map -> odom for debugging. Leave 'off' whenever SLAM / localization publishes it.
+    #   'static': fixed at the true start pose; /odom visibly drifts from the truth
+    #   'truth':  follows the truth like a perfect localizer; /scan stays on the map
+    debug_map_to_odom: 'off'
 
     # Can be changed while running.
     wheelbase: 0.3302          # m, gym f1tenth (lf + lr). The car's vesc.yaml has 0.25 [MEASURE]

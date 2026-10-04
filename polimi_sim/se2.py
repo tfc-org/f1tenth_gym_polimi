@@ -33,6 +33,12 @@ def compose(a: Pose2D, b: Pose2D) -> Pose2D:
     return Pose2D(a.x + c * b.x - s * b.y, a.y + s * b.x + c * b.y, wrap_angle(a.yaw + b.yaw))
 
 
+def inverse(a: Pose2D) -> Pose2D:
+    """Pose b such that compose(a, b) is the identity."""
+    c, s = math.cos(a.yaw), math.sin(a.yaw)
+    return Pose2D(-c * a.x - s * a.y, s * a.x - c * a.y, wrap_angle(-a.yaw))
+
+
 def interpolate(a: Pose2D, b: Pose2D, alpha: float) -> Pose2D:
     """Linear in position, shortest arc in yaw. alpha = 0 gives a, 1 gives b."""
     return Pose2D(

@@ -38,7 +38,8 @@ def test_cast_budget(caster: BlockCaster) -> None:
     runs = 200
     t0 = time.perf_counter()
     for i in range(runs):
-        distorted_scan(caster.cast, lambda t: Pose2D(START.x + 0.01 * i, 0.0, 0.0), MOUNT, GEOMETRY, 8, 0.0)
+        pose = Pose2D(START.x + 0.01 * i, 0.0, 0.0)
+        distorted_scan(caster.cast, lambda t, pose=pose: pose, MOUNT, GEOMETRY, 8, 0.0)
     per_scan_ms = (time.perf_counter() - t0) / runs * 1e3
     print(f'\n8-block scan of 1351 beams: {per_scan_ms:.3f} ms')
     assert per_scan_ms < 5.0

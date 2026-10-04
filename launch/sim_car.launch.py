@@ -11,7 +11,6 @@ from launch.launch_description_entity import LaunchDescriptionEntity
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-from launch_ros.parameter_descriptions import ParameterValue
 
 
 def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
@@ -47,11 +46,7 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
     )
     odom_model = Node(
         package='polimi_sim', executable='odom_model', name='odom_model', output='screen',
-        parameters=[arg('odom_params'), {
-            'debug_map_to_odom': ParameterValue(
-                LaunchConfiguration('debug_map_to_odom'), value_type=bool
-            ),
-        }],
+        parameters=[arg('odom_params'), {'debug_map_to_odom': arg('debug_map_to_odom')}],
     )
     teleop_bridge = Node(
         package='polimi_sim', executable='teleop_bridge', name='teleop_bridge', output='screen',
@@ -86,7 +81,7 @@ def generate_launch_description() -> LaunchDescription:
         ('actuation_params', os.path.join(config, 'actuation_model.yaml'), 'actuation_model parameters.'),
         ('odom_params', os.path.join(config, 'odom_model.yaml'), 'odom_model parameters.'),
         ('teleop_params', os.path.join(config, 'teleop_bridge.yaml'), 'teleop_bridge parameters.'),
-        ('debug_map_to_odom', 'false', 'Static map -> odom at the true start pose. Never with SLAM.'),
+        ('debug_map_to_odom', 'off', 'map -> odom for debugging: off | static | truth. off with SLAM.'),
     ]
     return LaunchDescription([
         *[DeclareLaunchArgument(n, default_value=d, description=h) for n, d, h in arguments],

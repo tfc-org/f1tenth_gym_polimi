@@ -2,7 +2,16 @@ import math
 
 import pytest
 
-from polimi_sim.se2 import Pose2D, PoseBuffer, Twist2D, compose, extrapolate, interpolate, wrap_angle
+from polimi_sim.se2 import (
+    Pose2D,
+    PoseBuffer,
+    Twist2D,
+    compose,
+    extrapolate,
+    interpolate,
+    inverse,
+    wrap_angle,
+)
 
 
 def test_wrap_angle() -> None:
@@ -13,6 +22,15 @@ def test_wrap_angle() -> None:
 def test_compose_rotates_then_translates() -> None:
     laser = compose(Pose2D(1.0, 2.0, math.pi / 2.0), Pose2D(0.27, 0.0, 0.0))
     assert (laser.x, laser.y, laser.yaw) == pytest.approx((1.0, 2.27, math.pi / 2.0))
+
+
+def test_inverse_undoes_compose() -> None:
+    a = Pose2D(1.5, -2.0, 2.5)
+    for pose in (compose(a, inverse(a)), compose(inverse(a), a)):
+        assert (pose.x, pose.y, pose.yaw) == pytest.approx((0.0, 0.0, 0.0), abs=1e-12)
+    truth, odom = Pose2D(3.0, 4.0, 1.0), Pose2D(0.5, 0.2, -0.3)
+    back = compose(compose(truth, inverse(odom)), odom)  # map -> odom, then odom -> base_link
+    assert (back.x, back.y, back.yaw) == pytest.approx((truth.x, truth.y, truth.yaw))
 
 
 def test_interpolate_position_and_ends() -> None:
