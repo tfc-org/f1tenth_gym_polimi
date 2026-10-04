@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import os
 
-import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchContext, LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
@@ -12,29 +11,44 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
+from polimi_sim.common.gym_config import (
+    build_gym_config,
+    load_lidar,
+    load_mount,
+    load_yaml,
+    write_gym_config,
+)
+
 
 def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
     def arg(name: str) -> str:
         return os.path.expanduser(LaunchConfiguration(name).perform(context))
 
-    sim_config = arg('sim_config') or os.path.join(arg('config_dir'), 'sim', arg('map') + '.yaml')
-    laser_mount = arg('laser_mount') or os.path.join(arg('config_dir'), 'car', 'laser_mount.yaml')
-    for path in (sim_config, laser_mount):
+    # Independent files: which map, which laser, where the laser sits, and the gym's common part.
+    config_dir = arg('config_dir')
+    map_file = os.path.join(config_dir, 'maps', arg('map') + '.yaml')
+    lidar_file = os.path.join(config_dir, 'lidar', arg('lidar') + '.yaml')
+    mount_file = os.path.join(config_dir, 'car', 'laser_mount.yaml')
+    gym_file = os.path.join(config_dir, 'sim', 'gym.yaml')
+    for path in (map_file, lidar_file, mount_file, gym_file):
         if not os.path.isfile(path):
             raise RuntimeError(f'{path} not found')
-    with open(laser_mount) as mount_file:
-        mount = {k: float(v) for k, v in yaml.safe_load(mount_file)['base_link_to_laser'].items()}
+    mount = load_mount(mount_file)
+    gym_config = write_gym_config(
+        build_gym_config(load_yaml(gym_file), load_yaml(map_file), load_lidar(lidar_file), mount),
+        f"{arg('map')}_{arg('lidar')}",
+    )
 
     gym = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(
             get_package_share_directory('f1tenth_gym_ros'), 'launch', 'gym_bridge_launch.py'
         )),
-        launch_arguments={'config': sim_config, 'open_foxglove': 'false'}.items(),
+        launch_arguments={'config': gym_config, 'open_foxglove': 'false'}.items(),
     )
     lidar_model = Node(
         package='polimi_sim', executable='lidar_model', name='lidar_model', output='screen',
-        parameters=[arg('lidar_params'), {
-            'sim_config': sim_config,
+        parameters=[lidar_file, {
+            'sim_config': gym_config,
             'mount_x': mount['x'],
             'mount_y': mount['y'],
             'mount_yaw': mount['yaw'],
@@ -73,11 +87,9 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
 def generate_launch_description() -> LaunchDescription:
     config = os.path.join(get_package_share_directory('polimi_sim'), 'config')
     arguments = [
-        ('map', 'levine', 'Gym config name in <config_dir>/sim: levine | spielberg.'),
-        ('sim_config', '', 'Gym config path. Overrides map.'),
+        ('map', 'levine', 'Map: a file name in <config_dir>/maps (levine | spielberg).'),
+        ('lidar', 'sl450', 'Laser: a file name in <config_dir>/lidar.'),
         ('config_dir', '~/ws/config', 'Our config directory (ros2_ws/config).'),
-        ('laser_mount', '', 'LiDAR mount file. Default: <config_dir>/car/laser_mount.yaml.'),
-        ('lidar_params', os.path.join(config, 'lidar_model.yaml'), 'lidar_model parameters.'),
         ('actuation_params', os.path.join(config, 'actuation_model.yaml'), 'actuation_model parameters.'),
         ('odom_params', os.path.join(config, 'odom_model.yaml'), 'odom_model parameters.'),
         ('teleop_params', os.path.join(config, 'teleop_bridge.yaml'), 'teleop_bridge parameters.'),
