@@ -1,4 +1,3 @@
-"""Config overlay: each file from the car's config directory if it has it, else the package default. No ROS imports."""
 from __future__ import annotations
 
 import os
