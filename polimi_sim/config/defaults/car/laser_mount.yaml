@@ -1,0 +1,9 @@
+# Default: stock f1tenth / datasheet values, not a measured car. Pass config_dir:= for a real car.
+# LiDAR mount, base_link -> laser. Shared by the simulator (polimi_sim) and, later, the car bringup.
+# [MEASURE] on the car. Initial values are f1tenth_stack's bringup defaults (0.27 0.0 0.11).
+base_link_to_laser:
+  x: 0.27     # m, forward
+  y: 0.0      # m, left
+  z: 0.11     # m, up
+  yaw: 0.0    # rad
+  roll: 0.0   # rad (3.1416 if the sensor is mounted upside down)

@@ -1,3 +1,4 @@
+# Default: stock f1tenth / datasheet values, not a measured car. Pass config_dir:= for a real car.
 # teleop_bridge: /cmd_vel (Twist) -> /teleop (mux priority 100). All values can be changed while running.
 /**:
   ros__parameters:

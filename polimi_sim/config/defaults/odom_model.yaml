@@ -1,3 +1,4 @@
+# Default: stock f1tenth / datasheet values, not a measured car. Pass config_dir:= for a real car.
 # odom_model: VESC-like wheel odometry. Topic and frames match f1tenth_stack's vesc.yaml.
 /**:
   ros__parameters:

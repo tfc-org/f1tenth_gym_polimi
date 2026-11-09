@@ -1,6 +1,6 @@
 """Needs f1tenth_gym and f1tenth_gym_ros (sim images only)."""
-import os
 import time
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -20,8 +20,7 @@ from polimi_sim.common.se2 import Pose2D  # noqa: E402
 from polimi_sim.lidar.effects import distorted_scan, scan_geometry  # noqa: E402
 from polimi_sim.lidar.raycast import BlockCaster, load_gym_track  # noqa: E402
 
-CONFIG = os.path.expanduser('~/ws/config')
-pytestmark = pytest.mark.skipif(not os.path.isdir(CONFIG), reason='no ros2_ws/config')
+CONFIG = Path(__file__).resolve().parents[2] / 'config' / 'defaults'
 
 GEOMETRY = scan_geometry(40.0, 270.0, 0.2)
 MOUNT = Pose2D(0.27, 0.0, 0.0)

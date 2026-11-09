@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 
+import launch.logging
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchContext, LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
@@ -18,6 +19,7 @@ from polimi_sim.common.gym_config import (
     load_yaml,
     write_gym_config,
 )
+from polimi_sim.common.overlay import report, resolve
 
 # ideal:=true: the models pass everything through, to compare against the normal run.
 # Safety behaviour (mux and VESC timeouts, steering clamp) and the 40 Hz scan rate stay.
@@ -39,15 +41,31 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
     # Wheel odometry still drifts from tyre slip: in ideal mode draw everything on the truth.
     map_to_odom = 'truth' if ideal and arg('debug_map_to_odom') == 'off' else arg('debug_map_to_odom')
 
-    # Independent files: which map, which laser, where the laser sits, and the gym's common part.
+    # Independent files: which map, which laser, where the laser sits, the gym's common part and
+    # the models. Each comes from config_dir if it has it, else from the package's defaults.
     config_dir = arg('config_dir')
-    map_file = os.path.join(config_dir, 'maps', arg('map') + '.yaml')
-    lidar_file = os.path.join(config_dir, 'lidar', arg('lidar') + '.yaml')
-    mount_file = os.path.join(config_dir, 'car', 'laser_mount.yaml')
-    gym_file = os.path.join(config_dir, 'sim', 'gym.yaml')
-    for path in (map_file, lidar_file, mount_file, gym_file):
-        if not os.path.isfile(path):
-            raise RuntimeError(f'{path} not found')
+    defaults = os.path.join(get_package_share_directory('polimi_sim'), 'config', 'defaults')
+    relative = {
+        'map': f"maps/{arg('map')}.yaml", 'lidar': f"lidar/{arg('lidar')}.yaml",
+        'mount': 'car/laser_mount.yaml', 'gym': 'sim/gym.yaml',
+        'actuation': 'actuation_model.yaml', 'odom': 'odom_model.yaml', 'teleop': 'teleop_bridge.yaml',
+    }
+    overrides = {'actuation': arg('actuation_params'), 'odom': arg('odom_params'), 'teleop': arg('teleop_params')}
+    try:
+        files = {k: resolve(rel, config_dir, defaults) for k, rel in relative.items() if not overrides.get(k)}
+    except FileNotFoundError as ex:
+        raise RuntimeError(str(ex)) from ex
+    info, warnings = report(list(files.values()), config_dir)
+    logger = launch.logging.get_logger('sim_car')
+    for line in info:
+        logger.info(line)
+    for line in warnings:
+        logger.warning(line)
+    for key, path in overrides.items():
+        if path:
+            logger.info(f'config: {relative[key]} <- {path} (argument)')
+    path_of = {**{k: f.path for k, f in files.items()}, **{k: v for k, v in overrides.items() if v}}
+    map_file, lidar_file, mount_file, gym_file = (path_of[k] for k in ('map', 'lidar', 'mount', 'gym'))
     mount = load_mount(mount_file)
     gym_config = write_gym_config(
         build_gym_config(load_yaml(gym_file), load_yaml(map_file), load_lidar(lidar_file), mount),
@@ -71,15 +89,15 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
     )
     actuation_model = Node(
         package='polimi_sim', executable='actuation_model', name='actuation_model', output='screen',
-        parameters=[arg('actuation_params'), IDEAL_ACTUATION if ideal else {}],
+        parameters=[path_of['actuation'], IDEAL_ACTUATION if ideal else {}],
     )
     odom_model = Node(
         package='polimi_sim', executable='odom_model', name='odom_model', output='screen',
-        parameters=[arg('odom_params'), {'debug_map_to_odom': map_to_odom}, IDEAL_ODOM if ideal else {}],
+        parameters=[path_of['odom'], {'debug_map_to_odom': map_to_odom}, IDEAL_ODOM if ideal else {}],
     )
     teleop_bridge = Node(
         package='polimi_sim', executable='teleop_bridge', name='teleop_bridge', output='screen',
-        parameters=[arg('teleop_params')],
+        parameters=[path_of['teleop']],
     )
     # The car's own mux and config, started as in f1tenth_stack's bringup. That remapping
     # matches nothing: the mux publishes /ackermann_cmd, which ackermann_to_vesc reads on the car.
@@ -100,14 +118,13 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
 
 
 def generate_launch_description() -> LaunchDescription:
-    config = os.path.join(get_package_share_directory('polimi_sim'), 'config')
     arguments = [
-        ('map', 'spielberg', 'Map: a file name in <config_dir>/maps (spielberg | levine).'),
-        ('lidar', 'sl450', 'Laser: a file name in <config_dir>/lidar.'),
-        ('config_dir', '~/ws/config', 'Our config directory (ros2_ws/config).'),
-        ('actuation_params', os.path.join(config, 'actuation_model.yaml'), 'actuation_model parameters.'),
-        ('odom_params', os.path.join(config, 'odom_model.yaml'), 'odom_model parameters.'),
-        ('teleop_params', os.path.join(config, 'teleop_bridge.yaml'), 'teleop_bridge parameters.'),
+        ('map', 'spielberg', 'Map: a file name in maps/ (defaults: spielberg | levine).'),
+        ('lidar', 'sl450', 'Laser: a file name in lidar/.'),
+        ('config_dir', '', "A car's config directory; each file it lacks comes from the defaults."),
+        ('actuation_params', '', 'actuation_model parameter file; empty = actuation_model.yaml from the overlay.'),
+        ('odom_params', '', 'odom_model parameter file; empty = odom_model.yaml from the overlay.'),
+        ('teleop_params', '', 'teleop_bridge parameter file; empty = teleop_bridge.yaml from the overlay.'),
         ('ideal', 'false', 'true: no sensor or actuator imperfections, and debug_map_to_odom truth.'),
         ('debug_map_to_odom', 'off', 'map -> odom for debugging: off | static | truth. off with SLAM.'),
     ]
