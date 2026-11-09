@@ -1,0 +1,7 @@
+# Default: stock f1tenth / datasheet values, not a measured car. Pass config_dir:= for a real car.
+# Red Bull Ring, shipped with f1tenth_gym_ros. About 2.2 m wide.
+# Any other gym_bridge parameter can be set here too (e.g. scale); it overrides sim/gym.yaml.
+map_path: 'maps/Spielberg'   # absolute, or relative to f1tenth_gym_ros's share directory
+sx: 0.0            # start pose in the map frame: m, m, rad
+sy: 0.0
+stheta: 0.26
