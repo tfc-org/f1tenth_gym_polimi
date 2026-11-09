@@ -1,0 +1,12 @@
+# actuation_model: /ackermann_cmd (mux output) -> /sim/drive (gym). All values can be changed while running.
+/**:
+  ros__parameters:
+    rate_hz: 100.0         # the gym's physics rate (fixed at start)
+    command_delay: 0.02    # s, command -> VESC [MEASURE]
+    vesc_timeout: 0.5      # s without commands -> speed 0 [VERIFY] VESC app config
+    steer_offset: 0.0      # rad, trim [MEASURE]
+    servo_delay: 0.03      # s [MEASURE]
+    servo_rate: 3.2        # rad/s; the gym applies its own sv_max (3.2) after this [MEASURE]
+    max_steer: 0.4189      # rad
+    accel_max: 4.0         # m/s^2 [MEASURE]
+    brake_max: 6.0         # m/s^2 [MEASURE]
