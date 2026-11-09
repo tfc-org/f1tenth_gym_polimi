@@ -90,7 +90,7 @@ class LidarModelNode(Node):
         self._rng: np.random.Generator = np.random.default_rng(p['seed'] or None)
 
         self._caster: BlockCaster = BlockCaster(
-            load_gym_track(p['sim_config']), self._geometry, self._effects.range_max
+            load_gym_track(p['sim_config']), self._geometry, self._effects.range_max, self._blocks
         )
         self._rel_clock: RelativeClock = RelativeClock(self)
         # Extrapolation covers the age of the newest truth pose (physics step 10 ms + publish 4 ms).

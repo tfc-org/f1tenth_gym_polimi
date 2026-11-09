@@ -9,6 +9,7 @@ import yaml
 pytest.importorskip('f1tenth_gym')
 pytest.importorskip('f1tenth_gym_ros')
 
+from f1tenth_gym.envs.track import Track  # noqa: E402
 from polimi_sim.common.gym_config import (  # noqa: E402
     build_gym_config,
     load_lidar,
@@ -28,7 +29,7 @@ START = Pose2D(-12.0, 0.0, 0.0)
 
 
 @pytest.fixture(scope='module')
-def caster(tmp_path_factory: pytest.TempPathFactory) -> BlockCaster:
+def track(tmp_path_factory: pytest.TempPathFactory) -> Track:
     gym_config = build_gym_config(
         load_yaml(f'{CONFIG}/sim/gym.yaml'),
         load_yaml(f'{CONFIG}/maps/levine.yaml'),
@@ -37,19 +38,28 @@ def caster(tmp_path_factory: pytest.TempPathFactory) -> BlockCaster:
     )
     path = tmp_path_factory.mktemp('gym') / 'gym.yaml'
     path.write_text(yaml.safe_dump(gym_config))
-    return BlockCaster(load_gym_track(str(path)), GEOMETRY, 25.0)
+    return load_gym_track(str(path))
 
 
-def test_blocks_match_a_single_cast(caster: BlockCaster) -> None:
-    plain = caster.cast(Pose2D(START.x + MOUNT.x, START.y, 0.0), 0, GEOMETRY.num_beams)
+@pytest.fixture(scope='module')
+def caster(track: Track) -> BlockCaster:
+    return BlockCaster(track, GEOMETRY, 25.0, 8)
+
+
+def test_blocks_match_a_single_cast(track: Track, caster: BlockCaster) -> None:
+    single = BlockCaster(track, GEOMETRY, 25.0, 1)
+    plain = single.cast(Pose2D(START.x + MOUNT.x, START.y, 0.0), 0, GEOMETRY.num_beams)
     blocks = distorted_scan(caster.cast, lambda t: START, MOUNT, GEOMETRY, 8, 0.0)
     assert plain.shape == (1351,) and 0.2 < plain.min() and plain.max() <= 25.0
-    # The gym looks beam angles up in a table: a block start can round to the next entry.
-    assert np.mean(np.abs(blocks - plain) > 1e-6) < 0.02
+    assert np.max(np.abs(blocks - plain)) < 1e-4
+
+
+def test_only_the_fixed_blocks_cast(caster: BlockCaster) -> None:
+    with pytest.raises(KeyError):
+        caster.cast(START, 0, 10)
 
 
 def test_cast_budget(caster: BlockCaster) -> None:
-    distorted_scan(caster.cast, lambda t: START, MOUNT, GEOMETRY, 8, 0.0)  # numba compile
     runs = 200
     t0 = time.perf_counter()
     for i in range(runs):

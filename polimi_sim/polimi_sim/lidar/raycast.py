@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import numpy as np
 import yaml
-from f1tenth_gym.envs.lidar.laser_models import ScanSimulator2D, get_scan
+from f1tenth_gym.envs.lidar.segment_scan import SegmentScanSimulator2D
 from f1tenth_gym.envs.track import Track
 
 from polimi_sim.common.se2 import Pose2D
-from polimi_sim.lidar.effects import FloatArray, ScanGeometry
+from polimi_sim.lidar.effects import FloatArray, ScanGeometry, block_bounds
 
 
 def load_gym_track(sim_config: str) -> Track:
@@ -33,40 +33,24 @@ def load_gym_track(sim_config: str) -> Track:
 
 
 class BlockCaster:
-    """Casts any contiguous block of a scan's beams from a given laser pose."""
+    """Casts the fixed blocks of a scan's beams from a given laser pose, one gym scanner per block."""
 
-    def __init__(self, track: Track, geometry: ScanGeometry, range_max: float) -> None:
-        self._geometry: ScanGeometry = geometry
-        self._sim: ScanSimulator2D = ScanSimulator2D(
-            geometry.num_beams,
-            geometry.angle_max - geometry.angle_min,
-            angle_min=geometry.angle_min,
-            angle_max=geometry.angle_max,
-            std_dev=0.0,
-            min_range=0.0,
-            max_range=range_max,
-        )
-        self._sim.set_map(track)
+    def __init__(self, track: Track, geometry: ScanGeometry, range_max: float, blocks: int) -> None:
+        self._sims: dict[tuple[int, int], SegmentScanSimulator2D] = {}
+        for start, stop in block_bounds(geometry.num_beams, blocks):
+            sim = SegmentScanSimulator2D(
+                stop - start,
+                (stop - 1 - start) * geometry.angle_increment,
+                angle_min=geometry.angle_min + start * geometry.angle_increment,
+                angle_max=geometry.angle_min + (stop - 1) * geometry.angle_increment,
+                std_dev=0.0,
+                min_range=0.0,
+                max_range=range_max,
+            )
+            sim.set_map(track)
+            sim.scan(np.zeros(3))
+            self._sims[(start, stop)] = sim
 
     def cast(self, laser: Pose2D, start: int, stop: int) -> FloatArray:
-        sim = self._sim
-        ranges: FloatArray = get_scan(
-            np.array([laser.x, laser.y, laser.yaw], dtype=np.float64),
-            sim.theta_dis,
-            self._geometry.angle_min + start * self._geometry.angle_increment,
-            stop - start,
-            sim.theta_index_increment,
-            sim.sines,
-            sim.cosines,
-            sim.eps,
-            sim.orig_x,
-            sim.orig_y,
-            sim.orig_c,
-            sim.orig_s,
-            sim.map_height,
-            sim.map_width,
-            sim.map_resolution,
-            sim.dt,
-            sim.max_range,
-        )
+        ranges: FloatArray = self._sims[(start, stop)].scan(np.array([laser.x, laser.y, laser.yaw]))
         return ranges
