@@ -38,7 +38,7 @@ config: sim/gym.yaml <- defaults
 config: 2 from /home/me/ws/config, 5 defaults
 ```
 
-It also warns for each file `config_dir` lacks. `actuation_params:=`, `odom_params:=` and `teleop_params:=` take a model file directly.
+It warns when `config_dir` lacks one of the measured car's files (`car/`, `lidar/`); the other defaults are expected. `actuation_params:=`, `odom_params:=` and `teleop_params:=` take a model file directly.
 
 ## Tests
 

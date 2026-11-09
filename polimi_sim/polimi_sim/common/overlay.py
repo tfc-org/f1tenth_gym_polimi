@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from typing import NamedTuple
 
+MEASURED: tuple[str, ...] = ('car/', 'lidar/')
 DEFAULT_LABEL = '# Default: stock f1tenth / datasheet values, not a measured car. Pass config_dir:= for a real car.'
 
 
@@ -25,11 +26,11 @@ def resolve(relative: str, config_dir: str, defaults_dir: str) -> Resolved:
 
 
 def report(files: list[Resolved], config_dir: str) -> tuple[list[str], list[str]]:
-    """Info lines (one per file, then a summary) and a warning per file config_dir lacks."""
+    """Info lines (one per file, then a summary) and a warning per measured car file config_dir lacks."""
     info = [f'config: {f.relative} <- {config_dir if f.from_config_dir else "defaults"}' for f in files]
     own = sum(f.from_config_dir for f in files)
     info.append(f'config: {own} from {config_dir}, {len(files) - own} defaults' if config_dir
                 else f'config: {len(files)} defaults')
     warnings = [f'config: {f.relative} not in {config_dir}, using the default'
-                for f in files if config_dir and not f.from_config_dir]
+                for f in files if config_dir and not f.from_config_dir and f.relative.startswith(MEASURED)]
     return info, warnings
