@@ -29,6 +29,7 @@ setup(
             'actuation_model = polimi_sim.actuation.node:main',
             'odom_model = polimi_sim.odom.node:main',
             'teleop_bridge = polimi_sim.teleop.node:main',
+            'make_world = polimi_sim.world.generate:main',
         ],
     },
 )

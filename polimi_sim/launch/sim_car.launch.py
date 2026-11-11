@@ -22,6 +22,7 @@ from polimi_sim.common.gym_config import (
     write_gym_config,
 )
 from polimi_sim.common.overlay import report, resolve
+from polimi_sim.common.vehicle import vehicle_preset
 
 # ideal:=true: the models pass everything through, to compare against the normal run.
 # Safety behaviour (mux and VESC timeouts, steering clamp) and the 40 Hz scan rate stay.
@@ -37,25 +38,6 @@ GYM_REMAPS: tuple[tuple[str, str], ...] = (
     ('bridge:/initialpose', '/sim/initialpose'),
     ('map_server:/map', '/sim/map'),
 )
-
-
-def vehicle_axles(preset: str) -> tuple[float, float]:
-    """lf and lr of the gym's vehicle preset, as the bridge picks it from vehicle_params."""
-    from f1tenth_gym.envs.dynamic_models import (
-        get_f1fifth_vehicle_parameters,
-        get_f1tenth_vehicle_parameters,
-        get_fullscale_vehicle_parameters,
-    )
-
-    getters = {
-        'f1tenth': get_f1tenth_vehicle_parameters,
-        'fullscale': get_fullscale_vehicle_parameters,
-        'f1fifth': get_f1fifth_vehicle_parameters,
-    }
-    if preset not in getters:
-        raise RuntimeError(f'vehicle_params {preset!r} is not one of {sorted(getters)}')
-    vehicle = getters[preset]()
-    return float(vehicle.lf), float(vehicle.lr)
 
 
 def with_gym_remaps(gym: LaunchDescriptionEntity) -> GroupAction:
@@ -76,6 +58,17 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
     # Independent files: which map, which laser, where the laser sits, the gym's common part and
     # the models. Each comes from config_dir if it has it, else from the package's defaults.
     config_dir = arg('config_dir')
+    world_source = os.path.join(arg('maps_dir'), 'src', f"{arg('map')}.yaml")
+    if config_dir and os.path.isfile(world_source):
+        # A room world: regenerate it at every start (fast and byte-identical), so an edit needs no extra step.
+        from polimi_sim.world.car import load_car
+        from polimi_sim.world.generate import generate
+
+        try:
+            for line in generate(world_source, config_dir, load_car(config_dir)):
+                launch.logging.get_logger('make_world').info(line)
+        except ValueError as ex:
+            raise RuntimeError(f'make_world {world_source}: {ex}') from ex
     defaults = os.path.join(get_package_share_directory('polimi_sim'), 'config', 'defaults')
     relative = {
         'map': f"maps/{arg('map')}.yaml", 'lidar': f"lidar/{arg('lidar')}.yaml",
@@ -103,7 +96,7 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
     map_dir = os.path.dirname(map_file)
     world = {k: resolve_relative(str(v), map_dir) for k, v in load_yaml(map_file).get('world', {}).items()}
     gym_params = build_gym_config(load_yaml(gym_file), load_yaml(map_file), load_lidar(lidar_file), mount, map_dir)
-    lf, lr = vehicle_axles(str(gym_params['bridge']['ros__parameters']['vehicle_params']))
+    preset = vehicle_preset(str(gym_params['bridge']['ros__parameters']['vehicle_params']))
     gym_config = write_gym_config(gym_params, f"{arg('map')}_{arg('lidar')}")
 
     gym = IncludeLaunchDescription(
@@ -135,7 +128,7 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
     )
     odom_model = Node(
         package='polimi_sim', executable='odom_model', name='odom_model', output='screen',
-        parameters=[path_of['odom'], {'debug_map_to_odom': map_to_odom, 'wheelbase': lf + lr}, IDEAL_ODOM if ideal else {}],
+        parameters=[path_of['odom'], {'debug_map_to_odom': map_to_odom, 'wheelbase': preset.lf + preset.lr}, IDEAL_ODOM if ideal else {}],
     )
     teleop_bridge = Node(
         package='polimi_sim', executable='teleop_bridge', name='teleop_bridge', output='screen',
@@ -164,6 +157,7 @@ def generate_launch_description() -> LaunchDescription:
         ('map', 'spielberg', 'Map: a file name in maps/ (defaults: spielberg | levine).'),
         ('lidar', 'sl450', 'Laser: a file name in lidar/.'),
         ('config_dir', '', "A car's config directory; each file it lacks comes from the defaults."),
+        ('maps_dir', '~/ws/maps', 'Room worlds: <maps_dir>/src/<map>.yaml is regenerated into config_dir at start.'),
         ('actuation_params', '', 'actuation_model parameter file; empty = actuation_model.yaml from the overlay.'),
         ('odom_params', '', 'odom_model parameter file; empty = odom_model.yaml from the overlay.'),
         ('teleop_params', '', 'teleop_bridge parameter file; empty = teleop_bridge.yaml from the overlay.'),
