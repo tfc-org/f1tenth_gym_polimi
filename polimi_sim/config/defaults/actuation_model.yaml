@@ -1,5 +1,6 @@
 # Default: stock f1tenth / datasheet values, not a measured car. Pass config_dir:= for a real car.
 # actuation_model: /ackermann_cmd (mux output) -> /sim/drive (gym). All values can be changed while running.
+# The steering clamp, max_steer_left and max_steer_right, comes from car/body.yaml (the launch passes it).
 /**:
   ros__parameters:
     rate_hz: 100.0         # the gym's physics rate (fixed at start)
@@ -8,6 +9,5 @@
     steer_offset: 0.0      # rad, trim [MEASURE]
     servo_delay: 0.03      # s [MEASURE]
     servo_rate: 3.2        # rad/s; the gym applies its own sv_max (3.2) after this [MEASURE]
-    max_steer: 0.4189      # rad
     accel_max: 4.0         # m/s^2 [MEASURE]
     brake_max: 6.0         # m/s^2 [MEASURE]

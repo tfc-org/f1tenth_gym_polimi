@@ -14,9 +14,11 @@ from launch_ros.actions import Node, SetRemap
 
 from polimi_sim.common.gym_config import (
     build_gym_config,
+    load_body,
     load_lidar,
     load_mount,
     load_yaml,
+    resolve_relative,
     write_gym_config,
 )
 from polimi_sim.common.overlay import report, resolve
@@ -35,6 +37,25 @@ GYM_REMAPS: tuple[tuple[str, str], ...] = (
     ('bridge:/initialpose', '/sim/initialpose'),
     ('map_server:/map', '/sim/map'),
 )
+
+
+def vehicle_axles(preset: str) -> tuple[float, float]:
+    """lf and lr of the gym's vehicle preset, as the bridge picks it from vehicle_params."""
+    from f1tenth_gym.envs.dynamic_models import (
+        get_f1fifth_vehicle_parameters,
+        get_f1tenth_vehicle_parameters,
+        get_fullscale_vehicle_parameters,
+    )
+
+    getters = {
+        'f1tenth': get_f1tenth_vehicle_parameters,
+        'fullscale': get_fullscale_vehicle_parameters,
+        'f1fifth': get_f1fifth_vehicle_parameters,
+    }
+    if preset not in getters:
+        raise RuntimeError(f'vehicle_params {preset!r} is not one of {sorted(getters)}')
+    vehicle = getters[preset]()
+    return float(vehicle.lf), float(vehicle.lr)
 
 
 def with_gym_remaps(gym: LaunchDescriptionEntity) -> GroupAction:
@@ -58,7 +79,7 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
     defaults = os.path.join(get_package_share_directory('polimi_sim'), 'config', 'defaults')
     relative = {
         'map': f"maps/{arg('map')}.yaml", 'lidar': f"lidar/{arg('lidar')}.yaml",
-        'mount': 'car/laser_mount.yaml', 'gym': 'sim/gym.yaml',
+        'mount': 'car/laser_mount.yaml', 'body': 'car/body.yaml', 'gym': 'sim/gym.yaml',
         'actuation': 'actuation_model.yaml', 'odom': 'odom_model.yaml', 'teleop': 'teleop_bridge.yaml',
     }
     overrides = {'actuation': arg('actuation_params'), 'odom': arg('odom_params'), 'teleop': arg('teleop_params')}
@@ -78,11 +99,12 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
     path_of = {**{k: f.path for k, f in files.items()}, **{k: v for k, v in overrides.items() if v}}
     map_file, lidar_file, mount_file, gym_file = (path_of[k] for k in ('map', 'lidar', 'mount', 'gym'))
     mount = load_mount(mount_file)
-    world = load_yaml(map_file).get('world', {})
-    gym_config = write_gym_config(
-        build_gym_config(load_yaml(gym_file), load_yaml(map_file), load_lidar(lidar_file), mount),
-        f"{arg('map')}_{arg('lidar')}",
-    )
+    body = load_body(path_of['body'])
+    map_dir = os.path.dirname(map_file)
+    world = {k: resolve_relative(str(v), map_dir) for k, v in load_yaml(map_file).get('world', {}).items()}
+    gym_params = build_gym_config(load_yaml(gym_file), load_yaml(map_file), load_lidar(lidar_file), mount, map_dir)
+    lf, lr = vehicle_axles(str(gym_params['bridge']['ros__parameters']['vehicle_params']))
+    gym_config = write_gym_config(gym_params, f"{arg('map')}_{arg('lidar')}")
 
     gym = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(
@@ -107,11 +129,13 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
     )
     actuation_model = Node(
         package='polimi_sim', executable='actuation_model', name='actuation_model', output='screen',
-        parameters=[path_of['actuation'], IDEAL_ACTUATION if ideal else {}],
+        parameters=[path_of['actuation'], {
+            'max_steer_left': body['steer_max_left'], 'max_steer_right': body['steer_max_right'],
+        }, IDEAL_ACTUATION if ideal else {}],
     )
     odom_model = Node(
         package='polimi_sim', executable='odom_model', name='odom_model', output='screen',
-        parameters=[path_of['odom'], {'debug_map_to_odom': map_to_odom}, IDEAL_ODOM if ideal else {}],
+        parameters=[path_of['odom'], {'debug_map_to_odom': map_to_odom, 'wheelbase': lf + lr}, IDEAL_ODOM if ideal else {}],
     )
     teleop_bridge = Node(
         package='polimi_sim', executable='teleop_bridge', name='teleop_bridge', output='screen',
