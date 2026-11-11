@@ -139,7 +139,7 @@ def generate(source_path: str, config_dir: str, car: Car, allow_tight: bool = Fa
     edge = width / 2.0 + tape_width / 2.0  # centre of each tape strip
     _dump(os.path.join(out_dir, 'tape.yaml'), header, {
         'frame': 'sim_world', 'width': width, 'tape_width': tape_width, 'rgb': list(track_src['rgb']),
-        'length': _r(line.length), 'centerline': _points(line.xy),
+        'length': _r(line.length), 'start_s': _r(float(src['start']['s']) % line.length), 'centerline': _points(line.xy),
         'lines': [_points(line.offset(edge)), _points(line.offset(-edge))],
     })
     _dump(os.path.join(out_dir, 'scene.yaml'), header, {

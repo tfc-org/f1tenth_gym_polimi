@@ -149,7 +149,24 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
             '--frame-id', 'base_link', '--child-frame-id', 'laser',
         ],
     )
-    return [with_gym_remaps(gym), lidar_model, actuation_model, odom_model, teleop_bridge, ackermann_mux, static_tf]
+    start = gym_params['bridge']['ros__parameters']
+    sim_reset = Node(
+        package='polimi_sim', executable='sim_reset', name='sim_reset', output='screen',
+        parameters=[{'sx': float(start['sx']), 'sy': float(start['sy']), 'stheta': float(start['stheta'])}],
+    )
+    nodes = [with_gym_remaps(gym), lidar_model, actuation_model, odom_model, teleop_bridge, ackermann_mux, static_tf,
+             sim_reset]
+    if 'tape' in world:  # a room world: the track's truth and its evaluation
+        nodes.append(Node(
+            package='polimi_sim', executable='world_publisher', name='world_publisher', output='screen',
+            parameters=[{'tape': world['tape']}],
+        ))
+        nodes.append(Node(
+            package='polimi_sim', executable='track_monitor', name='track_monitor', output='screen',
+            parameters=[{'tape': world['tape'], 'world': arg('map'), 'lr': preset.lr,
+                         'track_width': body['track_width']}],
+        ))
+    return nodes
 
 
 def generate_launch_description() -> LaunchDescription:
