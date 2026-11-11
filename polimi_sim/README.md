@@ -28,6 +28,7 @@ ros2 launch polimi_sim sim_car.launch.py config_dir:=$HOME/ws/config    # a real
 | `maps/spielberg.yaml`, `maps/levine.yaml` | map and start pose (rear axle) |
 | `lidar/sl450.yaml` | the laser model |
 | `car/laser_mount.yaml` | `base_link` to `laser` |
+| `car/body.yaml` | track width and the servo clamp on each side |
 | `actuation_model.yaml`, `odom_model.yaml`, `teleop_bridge.yaml` | the other models |
 
 With `config_dir:=<dir>`, each file is taken from `<dir>/<same path>` if it exists, else from the defaults. The launch logs where each one came from:
@@ -39,6 +40,11 @@ config: 2 from /home/me/ws/config, 5 defaults
 ```
 
 It warns when `config_dir` lacks one of the measured car's files (`car/`, `lidar/`); the other defaults are expected. `actuation_params:=`, `odom_params:=` and `teleop_params:=` take a model file directly.
+
+## Room worlds and evaluation
+
+- `ros2 run polimi_sim make_world <maps>/src/<world>.yaml --config-dir <config>` turns one source file (room, objects, taped track, start) into `<maps>/<world>/` (collision map, LiDAR slice, `scene.yaml`, `tape.yaml`, `centerline.csv`) and `<config>/maps/<world>.yaml`. The launch does it at every start when `<maps_dir>/src/<map>.yaml` exists (`maps_dir:=`, default `~/ws/maps`).
+- On such a map, `world_publisher` draws the tape on `/sim/truth/tape` and `track_monitor` publishes `/sim/eval/*` and `/sim/health/*` and writes a CSV line per lap to `~/ws/runs`. `sim_reset` (every map) serves `/sim/reset` and `/sim/reset_pose`.
 
 ## Truth frame and the stack's topics
 

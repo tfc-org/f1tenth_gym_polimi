@@ -18,7 +18,8 @@ class ActuationConfig:
     steer_offset: float = 0.0     # rad, trim
     servo_delay: float = 0.03     # s, dead time of the servo
     servo_rate: float = 3.2       # rad/s
-    max_steer: float = 0.4189     # rad
+    max_steer_left: float = 0.4189   # rad, the servo clamp to the left (positive angles)
+    max_steer_right: float = 0.4189  # rad, to the right, as a positive number
     accel_max: float = 4.0        # m/s^2
     brake_max: float = 6.0        # m/s^2
 
@@ -26,7 +27,7 @@ class ActuationConfig:
         for name in ('command_delay', 'vesc_timeout', 'servo_delay'):
             if getattr(self, name) < 0.0:
                 raise ValueError(f'{name} must be >= 0')
-        for name in ('servo_rate', 'max_steer', 'accel_max', 'brake_max'):
+        for name in ('servo_rate', 'max_steer_left', 'max_steer_right', 'accel_max', 'brake_max'):
             if getattr(self, name) <= 0.0:
                 raise ValueError(f'{name} must be > 0')
 
@@ -87,7 +88,7 @@ class ActuationModel:
             if now - arrival <= cfg.vesc_timeout + _EPS:
                 target_speed = speed
 
-        steering_command = max(-cfg.max_steer, min(cfg.max_steer, steer + cfg.steer_offset))
+        steering_command = max(-cfg.max_steer_right, min(cfg.max_steer_left, steer + cfg.steer_offset))
         self._servo.push(now, steering_command)
         delayed = self._servo.get(now, cfg.servo_delay)
         if delayed is not None:

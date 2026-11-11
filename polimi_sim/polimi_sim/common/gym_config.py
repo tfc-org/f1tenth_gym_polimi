@@ -11,6 +11,7 @@ import yaml
 MAP_KEYS: tuple[str, ...] = ('map_path', 'sx', 'sy', 'stheta')
 LIDAR_KEYS: tuple[str, ...] = ('fov_deg', 'resolution_deg', 'range_min', 'range_max')
 MOUNT_KEYS: tuple[str, ...] = ('x', 'y', 'z', 'yaw', 'roll')
+BODY_KEYS: tuple[str, ...] = ('track_width', 'steer_max_left', 'steer_max_right')
 
 
 def load_yaml(path: str) -> dict[str, Any]:
@@ -34,6 +35,20 @@ def load_mount(path: str) -> dict[str, float]:
     return {key: float(mount[key]) for key in MOUNT_KEYS}
 
 
+def load_body(path: str) -> dict[str, float]:
+    """car/body.yaml: track width and the servo clamp on each side."""
+    body = load_yaml(path)
+    _require(body, BODY_KEYS, path)
+    return {key: float(body[key]) for key in BODY_KEYS}
+
+
+def resolve_relative(path: str, base_dir: str) -> str:
+    """A path starting with ./ or ../ is relative to base_dir (the file that names it); others stay."""
+    if path.startswith(('./', '../')):
+        return os.path.normpath(os.path.join(base_dir, path))
+    return path
+
+
 def load_lidar(path: str) -> dict[str, Any]:
     """The parameters of a lidar_model parameter file."""
     lidar: dict[str, Any] = load_yaml(path).get('/**', {}).get('ros__parameters', {})
@@ -42,18 +57,24 @@ def load_lidar(path: str) -> dict[str, Any]:
 
 
 def build_gym_config(
-    base: dict[str, Any], map_config: dict[str, Any], lidar: dict[str, Any], mount: dict[str, float]
+    base: dict[str, Any],
+    map_config: dict[str, Any],
+    lidar: dict[str, Any],
+    mount: dict[str, float],
+    map_dir: str = '',
 ) -> dict[str, Any]:
     """Base gym config + the map's values + the gym's own LiDAR, derived from the laser and its mount.
 
     The gym's LiDAR is not what the stack sees (lidar_model publishes /scan); the gym needs
-    it for its wall collision check, so it gets the same geometry and no noise.
+    it for its wall collision check, so it gets the same geometry and no noise. A map_path
+    starting with ./ or ../ is relative to map_dir, the folder of the map file.
     """
     _require(map_config, MAP_KEYS, 'the map file')
     _require(lidar, LIDAR_KEYS, 'the lidar file')
     config = copy.deepcopy(base)
     params: dict[str, Any] = config['bridge']['ros__parameters']
-    params.update(map_config)
+    params.update({key: value for key, value in map_config.items() if key != 'world'})  # world: for polimi_sim's nodes
+    params['map_path'] = resolve_relative(str(params['map_path']), map_dir)
     half_fov = float(lidar['fov_deg']) / 2.0
     params.update({
         'lidar_enabled': True,
