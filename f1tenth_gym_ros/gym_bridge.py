@@ -278,6 +278,7 @@ class GymBridge(Node):
         self.declare_parameter('scan_angle_max', 135.0)
         self.declare_parameter('map_path', 'levine')
         self.declare_parameter('map_img_ext', '.png')
+        self.declare_parameter('truth_frame', 'map')
         self.declare_parameter('num_agents', 1)
         self.declare_parameter('sx', 0.0)
         self.declare_parameter('sy', 0.0)
@@ -314,6 +315,8 @@ class GymBridge(Node):
                 f'set: {", ".join(missing_pose_params)}. Add them to the sim config '
                 'this node was launched with (see config/sim.yaml).'
             )
+
+        self.truth_frame = self.get_parameter('truth_frame').value
 
         self.vehicle_params = None
         vehicle_params_key = self.get_parameter('vehicle_params').value
@@ -804,7 +807,7 @@ class GymBridge(Node):
         pose = self._cog_to_base_link(pose)
         odom = Odometry()
         odom.header.stamp = ts
-        odom.header.frame_id = 'map'
+        odom.header.frame_id = self.truth_frame
         odom.child_frame_id = namespace + '/base_link'
         odom.pose.pose.position.x = pose[0]
         odom.pose.pose.position.y = pose[1]
@@ -846,7 +849,7 @@ class GymBridge(Node):
             ts_msg = TransformStamped()
             ts_msg.transform = t
             ts_msg.header.stamp = ts
-            ts_msg.header.frame_id = 'map'
+            ts_msg.header.frame_id = self.truth_frame
             ts_msg.child_frame_id = namespace + '/base_link'
             self.br.sendTransform(ts_msg)
 

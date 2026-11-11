@@ -177,12 +177,13 @@ def _launch_setup(context, *args, **kwargs):
         with open(map_image_path, 'rb') as img_file:
             file.write(img_file.read())
 
+    truth_frame = config_dict['bridge']['ros__parameters'].get('truth_frame', 'map')
     map_server_node = Node(
         package='nav2_map_server',
         executable='map_server',
         parameters=[{'yaml_filename': temp_yaml_path},
                     {'topic': 'map'},
-                    {'frame_id': 'map'},
+                    {'frame_id': truth_frame},
                     {'output': 'screen'},
                     {'use_sim_time': use_sim_time}],
     )
