@@ -7,9 +7,7 @@ from __future__ import annotations
 import math
 from collections import deque
 from dataclasses import dataclass
-from typing import Generic, TypeVar
 
-T = TypeVar('T')
 _EPS = 1e-9
 
 
@@ -40,7 +38,7 @@ class ActuationOutput:
     steering_command: float  # rad, as sent to the VESC (before the servo dynamics)
 
 
-class DelayLine(Generic[T]):
+class DelayLine[T]:
     """Values that become visible `delay` seconds after they were pushed."""
 
     def __init__(self) -> None:
