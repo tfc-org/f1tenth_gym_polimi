@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from polimi_sim.odom.model import OdomConfig, OdomState, WheelOdometry, debug_tf_edges
+from polimi_sim.odom.model import OdomConfig, OdomState, WheelOdometry, debug_identity
 
 DT = 0.02
 QUIET = dict(speed_scale_error=0.0, speed_noise_std=0.0)
@@ -65,13 +65,13 @@ def test_config_is_validated() -> None:
 
 
 @pytest.mark.parametrize('mode', ['static', 'truth'])
-def test_debug_tfs_hang_on_the_map_frame_and_join_the_truth_by_an_identity(mode: str) -> None:
-    assert debug_tf_edges(mode, 'sim_world', 'map', 'odom') == [('sim_world', 'map'), ('map', 'odom')]
+def test_the_debug_modes_join_the_map_frame_to_the_truth(mode: str) -> None:
+    assert debug_identity(mode, 'sim_world', 'map') == ('sim_world', 'map')
 
 
 def test_no_identity_when_the_truth_frame_is_the_map_frame() -> None:
-    assert debug_tf_edges('truth', 'map', 'map', 'odom') == [('map', 'odom')]
+    assert debug_identity('truth', 'map', 'map') is None
 
 
-def test_no_debug_tfs_when_off() -> None:
-    assert debug_tf_edges('off', 'sim_world', 'map', 'odom') == []
+def test_no_identity_when_off() -> None:
+    assert debug_identity('off', 'sim_world', 'map') is None

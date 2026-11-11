@@ -23,7 +23,7 @@ from polimi_sim.common.ros_utils import (
     yaw_from_quaternion,
 )
 from polimi_sim.common.se2 import Pose2D, compose, inverse
-from polimi_sim.odom.model import OdomConfig, WheelOdometry, debug_tf_edges
+from polimi_sim.odom.model import OdomConfig, WheelOdometry, debug_identity
 
 MAP_TO_ODOM_MODES: tuple[str, ...] = ('off', 'static', 'truth')
 
@@ -89,7 +89,7 @@ class OdomModelNode(Node):
         self._timer = self.create_timer(1.0 / p['rate_hz'], self._on_timer)
 
     def _on_reset(self, request: Empty.Request, response: Empty.Response) -> Empty.Response:
-        """Zero the odometry, e.g. after the car was moved by hand with /initialpose."""
+        """Zero the odometry, e.g. after the car was moved by hand with /sim/initialpose."""
         self._odometry.reset()
         self._pin_static = True
         self.get_logger().info('odometry reset to the origin')
@@ -104,15 +104,12 @@ class OdomModelNode(Node):
 
     def _on_truth(self, msg: Odometry) -> None:
         if self._pin_static and self._static_tf is not None:
-            *identities, _ = debug_tf_edges(
-                self._debug_mode, msg.header.frame_id, self._map_frame, self._odom_frame
-            )
             transforms = []
-            for parent, child in identities:
+            identity = debug_identity(self._debug_mode, msg.header.frame_id, self._map_frame)
+            if identity is not None:
                 tf = TransformStamped()
                 tf.header.stamp = msg.header.stamp
-                tf.header.frame_id = parent
-                tf.child_frame_id = child
+                tf.header.frame_id, tf.child_frame_id = identity
                 tf.transform.rotation.w = 1.0
                 transforms.append(tf)
             if self._debug_mode == 'static':

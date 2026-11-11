@@ -67,10 +67,7 @@ class WheelOdometry:
         return self.state
 
 
-def debug_tf_edges(mode: str, truth_frame: str, map_frame: str, odom_frame: str) -> list[tuple[str, str]]:
-    """(parent, child) of each debug_map_to_odom TF: the static identity truth_frame -> map_frame
-    when they differ, so the stack's tree lines up with the truth, then map_frame -> odom_frame."""
-    if mode == 'off':
-        return []
-    identity = [(truth_frame, map_frame)] if truth_frame != map_frame else []
-    return [*identity, (map_frame, odom_frame)]
+def debug_identity(mode: str, truth_frame: str, map_frame: str) -> tuple[str, str] | None:
+    """(parent, child) of the static identity that joins map_frame to the truth in the debug modes,
+    so the stack's tree lines up with the truth; None when off or when the two are the same frame."""
+    return (truth_frame, map_frame) if mode != 'off' and truth_frame != map_frame else None
