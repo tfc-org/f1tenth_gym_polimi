@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from polimi_sim.odom.model import OdomConfig, OdomState, WheelOdometry
+from polimi_sim.odom.model import OdomConfig, OdomState, WheelOdometry, debug_tf_edges
 
 DT = 0.02
 QUIET = dict(speed_scale_error=0.0, speed_noise_std=0.0)
@@ -62,3 +62,16 @@ def test_reset_goes_back_to_the_origin() -> None:
 def test_config_is_validated() -> None:
     with pytest.raises(ValueError):
         OdomConfig(wheelbase=0.0)
+
+
+@pytest.mark.parametrize('mode', ['static', 'truth'])
+def test_debug_tfs_hang_on_the_map_frame_and_join_the_truth_by_an_identity(mode: str) -> None:
+    assert debug_tf_edges(mode, 'sim_world', 'map', 'odom') == [('sim_world', 'map'), ('map', 'odom')]
+
+
+def test_no_identity_when_the_truth_frame_is_the_map_frame() -> None:
+    assert debug_tf_edges('truth', 'map', 'map', 'odom') == [('map', 'odom')]
+
+
+def test_no_debug_tfs_when_off() -> None:
+    assert debug_tf_edges('off', 'sim_world', 'map', 'odom') == []

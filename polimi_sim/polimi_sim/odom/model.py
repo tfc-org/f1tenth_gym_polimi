@@ -65,3 +65,12 @@ class WheelOdometry:
             yaw_rate=yaw_rate,
         )
         return self.state
+
+
+def debug_tf_edges(mode: str, truth_frame: str, map_frame: str, odom_frame: str) -> list[tuple[str, str]]:
+    """(parent, child) of each debug_map_to_odom TF: the static identity truth_frame -> map_frame
+    when they differ, so the stack's tree lines up with the truth, then map_frame -> odom_frame."""
+    if mode == 'off':
+        return []
+    identity = [(truth_frame, map_frame)] if truth_frame != map_frame else []
+    return [*identity, (map_frame, odom_frame)]

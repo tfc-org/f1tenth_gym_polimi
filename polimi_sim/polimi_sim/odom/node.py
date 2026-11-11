@@ -23,7 +23,7 @@ from polimi_sim.common.ros_utils import (
     yaw_from_quaternion,
 )
 from polimi_sim.common.se2 import Pose2D, compose, inverse
-from polimi_sim.odom.model import OdomConfig, WheelOdometry
+from polimi_sim.odom.model import OdomConfig, WheelOdometry, debug_tf_edges
 
 MAP_TO_ODOM_MODES: tuple[str, ...] = ('off', 'static', 'truth')
 
@@ -36,6 +36,7 @@ class OdomModelNode(Node):
             'steering_command_topic': 'sim/steering_command',
             'odom_topic': 'odom',
             'odom_frame': 'odom',
+            'map_frame': 'map',
             'base_frame': 'base_link',
             'publish_tf': True,
             'rate_hz': 50.0,
@@ -64,8 +65,9 @@ class OdomModelNode(Node):
         self._true_speed: float | None = None
         self._pin_static: bool = True
         self._true_pose: Pose2D = Pose2D(0.0, 0.0, 0.0)
-        self._map_frame: str = 'map'
-        self._track_truth: bool = p['debug_map_to_odom'] == 'truth'
+        self._map_frame: str = p['map_frame']
+        self._debug_mode: str = p['debug_map_to_odom']
+        self._track_truth: bool = self._debug_mode == 'truth'
         self._steering_command: float | None = None
         self._last_update: float | None = None
 
@@ -74,7 +76,7 @@ class OdomModelNode(Node):
         )
         self._publish_odom_tf: bool = p['publish_tf']
         self._static_tf: StaticTransformBroadcaster | None = (
-            StaticTransformBroadcaster(self) if p['debug_map_to_odom'] == 'static' else None
+            StaticTransformBroadcaster(self) if self._debug_mode != 'off' else None
         )
 
         self.add_on_set_parameters_callback(self._on_set_parameters)
@@ -102,18 +104,30 @@ class OdomModelNode(Node):
 
     def _on_truth(self, msg: Odometry) -> None:
         if self._pin_static and self._static_tf is not None:
-            # Odometry starts at 0: pin odom on the true pose of that moment so both can be overlaid.
-            tf = TransformStamped()
-            tf.header.stamp = msg.header.stamp
-            tf.header.frame_id = msg.header.frame_id
-            tf.child_frame_id = self._odom_frame
-            tf.transform.translation.x = msg.pose.pose.position.x
-            tf.transform.translation.y = msg.pose.pose.position.y
-            tf.transform.rotation = msg.pose.pose.orientation
-            self._static_tf.sendTransform(tf)
+            *identities, _ = debug_tf_edges(
+                self._debug_mode, msg.header.frame_id, self._map_frame, self._odom_frame
+            )
+            transforms = []
+            for parent, child in identities:
+                tf = TransformStamped()
+                tf.header.stamp = msg.header.stamp
+                tf.header.frame_id = parent
+                tf.child_frame_id = child
+                tf.transform.rotation.w = 1.0
+                transforms.append(tf)
+            if self._debug_mode == 'static':
+                # Odometry starts at 0: pin odom on the true pose of that moment so both can be overlaid.
+                tf = TransformStamped()
+                tf.header.stamp = msg.header.stamp
+                tf.header.frame_id = self._map_frame
+                tf.child_frame_id = self._odom_frame
+                tf.transform.translation.x = msg.pose.pose.position.x
+                tf.transform.translation.y = msg.pose.pose.position.y
+                tf.transform.rotation = msg.pose.pose.orientation
+                transforms.append(tf)
+            self._static_tf.sendTransform(transforms)
         self._pin_static = False
         self._true_speed = msg.twist.twist.linear.x
-        self._map_frame = msg.header.frame_id
         self._true_pose = Pose2D(
             msg.pose.pose.position.x,
             msg.pose.pose.position.y,
