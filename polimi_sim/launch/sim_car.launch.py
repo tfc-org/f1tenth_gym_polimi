@@ -65,7 +65,8 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
         from polimi_sim.world.generate import generate
 
         try:
-            for line in generate(world_source, config_dir, load_car(config_dir)):
+            car, truth_frame = load_car(config_dir)
+            for line in generate(world_source, config_dir, car, truth_frame=truth_frame):
                 launch.logging.get_logger('make_world').info(line)
         except ValueError as ex:
             raise RuntimeError(f'make_world {world_source}: {ex}') from ex
@@ -152,14 +153,15 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
     start = gym_params['bridge']['ros__parameters']
     sim_reset = Node(
         package='polimi_sim', executable='sim_reset', name='sim_reset', output='screen',
-        parameters=[{'sx': float(start['sx']), 'sy': float(start['sy']), 'stheta': float(start['stheta'])}],
+        parameters=[{'sx': float(start['sx']), 'sy': float(start['sy']), 'stheta': float(start['stheta']),
+                     'truth_frame': str(start.get('truth_frame', 'map'))}],
     )
     nodes = [with_gym_remaps(gym), lidar_model, actuation_model, odom_model, teleop_bridge, ackermann_mux, static_tf,
              sim_reset]
     if 'tape' in world:  # a room world: the track's truth and its evaluation
         nodes.append(Node(
             package='polimi_sim', executable='world_publisher', name='world_publisher', output='screen',
-            parameters=[{'tape': world['tape']}],
+            parameters=[{'tape': world['tape'], 'truth_frame': str(start.get('truth_frame', 'map'))}],
         ))
         nodes.append(Node(
             package='polimi_sim', executable='track_monitor', name='track_monitor', output='screen',

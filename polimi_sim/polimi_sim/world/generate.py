@@ -17,7 +17,7 @@ import cv2
 import numpy as np
 import yaml
 
-from polimi_sim.world.track import CenterLine, centerline, min_radius, parse_primitives, tightest_corners
+from polimi_sim.world.track import CenterLine, FloatArray, centerline, min_radius, parse_primitives, tightest_corners
 
 RADIUS_MARGIN = 0.2  # m, on top of the car's tightest circle
 MAP_THRESHOLDS: dict[str, Any] = {'negate': 0, 'occupied_thresh': 0.65, 'free_thresh': 0.196}
@@ -43,15 +43,17 @@ def _points(xy: np.ndarray) -> list[list[float]]:
     return [[_r(x), _r(y)] for x, y in xy]
 
 
-def _polygon(obj: dict[str, Any]) -> np.ndarray:
+def _polygon(obj: dict[str, Any]) -> FloatArray:
     """A box (x, y, yaw in degrees, length, width) or a prism (polygon) as an (n, 2) array."""
     if 'polygon' in obj:
-        return np.asarray(obj['polygon'], dtype=float)
+        polygon: FloatArray = np.asarray(obj['polygon'], dtype=float)
+        return polygon
     half_l, half_w = float(obj['length']) / 2.0, float(obj['width']) / 2.0
     yaw = math.radians(float(obj.get('yaw', 0.0)))
     corners = np.array([[half_l, half_w], [-half_l, half_w], [-half_l, -half_w], [half_l, -half_w]])
     rot = np.array([[math.cos(yaw), -math.sin(yaw)], [math.sin(yaw), math.cos(yaw)]])
-    return corners @ rot.T + np.array([float(obj['x']), float(obj['y'])])
+    box: FloatArray = corners @ rot.T + np.array([float(obj['x']), float(obj['y'])])
+    return box
 
 
 class Grid:
@@ -107,7 +109,9 @@ def check_track(primitives: list[Any], car: Car, allow_tight: bool) -> list[str]
     return lines + [f'WARNING: {f}' for f in failures]
 
 
-def generate(source_path: str, config_dir: str, car: Car, allow_tight: bool = False) -> list[str]:
+def generate(
+    source_path: str, config_dir: str, car: Car, allow_tight: bool = False, truth_frame: str = 'sim_world'
+) -> list[str]:
     """Write the world's files; returns the report. Raises ValueError when a hard check fails."""
     with open(source_path) as source_file:
         src: dict[str, Any] = yaml.safe_load(source_file)
@@ -125,8 +129,8 @@ def generate(source_path: str, config_dir: str, car: Car, allow_tight: bool = Fa
     width, tape_width = float(track_src['width']), float(track_src.get('tape_width', 0.05))
     primitives = parse_primitives(track_src['primitives'])
     report = check_track(primitives, car, allow_tight)
-    line: CenterLine = centerline(primitives, tuple(float(v) for v in track_src['origin'][:2]) + (
-        math.radians(float(track_src['origin'][2])),))
+    ox, oy, oh = (float(v) for v in track_src['origin'])
+    line: CenterLine = centerline(primitives, (ox, oy, math.radians(oh)))
 
     grid = Grid(outline, float(src.get('resolution', 0.05)))
     lidar_obstacles = [p for p, obj in zip(polygons, objects, strict=True) if float(obj['height']) > car.laser_z]
@@ -138,12 +142,12 @@ def generate(source_path: str, config_dir: str, car: Car, allow_tight: bool = Fa
 
     edge = width / 2.0 + tape_width / 2.0  # centre of each tape strip
     _dump(os.path.join(out_dir, 'tape.yaml'), header, {
-        'frame': 'sim_world', 'width': width, 'tape_width': tape_width, 'rgb': list(track_src['rgb']),
+        'frame': truth_frame, 'width': width, 'tape_width': tape_width, 'rgb': list(track_src['rgb']),
         'length': _r(line.length), 'start_s': _r(float(src['start']['s']) % line.length), 'centerline': _points(line.xy),
         'lines': [_points(line.offset(edge)), _points(line.offset(-edge))],
     })
     _dump(os.path.join(out_dir, 'scene.yaml'), header, {
-        'frame': 'sim_world', 'floor': {'rgb': list(src['floor']['rgb'])},
+        'frame': truth_frame, 'floor': {'rgb': list(src['floor']['rgb'])},
         'walls': {'outline': _points(outline), 'height': float(room['wall_height']), 'rgb': list(room['rgb'])},
         'objects': [{'polygon': _points(p), 'height': float(o['height']), 'rgb': list(o['rgb'])}
                     for p, o in zip(polygons, objects, strict=True)],
@@ -181,7 +185,8 @@ def main(argv: list[str] | None = None) -> None:
     from polimi_sim.world.car import load_car  # needs f1tenth_gym and the package's defaults
 
     try:
-        for line in generate(args.source, args.config_dir, load_car(args.config_dir), args.allow_tight):
+        car, truth_frame = load_car(args.config_dir)
+        for line in generate(args.source, args.config_dir, car, args.allow_tight, truth_frame):
             print(line)
     except (ValueError, KeyError, FileNotFoundError) as ex:
         print(f'make_world: {ex}', file=sys.stderr)
