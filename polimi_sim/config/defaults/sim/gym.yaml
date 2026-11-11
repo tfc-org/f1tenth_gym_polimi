@@ -32,6 +32,7 @@
 #   ego_scan_topic   sim/scan_unused: /scan comes from lidar_model. The gym's LiDAR stays on,
 #                    noise-free, to compare against (TDD_Gym DEC-03).
 #   kb_teleop        False: the gym's /cmd_vel path bypasses the mux. teleop_bridge takes /cmd_vel.
+#   truth_frame      sim_world: the truth is not the stack's map frame, which SLAM and AMCL own.
 
 bridge:
   ros__parameters:
@@ -53,6 +54,7 @@ bridge:
     # map parameters
     # map_path, sx, sy, stheta are filled in from the map file.
     map_img_ext: '.png'
+    truth_frame: 'sim_world'
 
     # car parameters and scale
     # Supported vehicle parameters are 'f1tenth', 'fullscale', and 'f1fifth'
