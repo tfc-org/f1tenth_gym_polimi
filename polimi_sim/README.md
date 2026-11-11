@@ -40,10 +40,17 @@ config: 2 from /home/me/ws/config, 5 defaults
 
 It warns when `config_dir` lacks one of the measured car's files (`car/`, `lidar/`); the other defaults are expected. `actuation_params:=`, `odom_params:=` and `teleop_params:=` take a model file directly.
 
+## Truth frame and the stack's topics
+
+- The gym's truth is in `sim_world` (`truth_frame` in `sim/gym.yaml`, a parameter of this fork's bridge): the TF `sim_world -> ego_racecar/base_link`, `/ego_racecar/odom` and the gym's map. `map` stays free for SLAM and AMCL.
+- Two gym topics move out of the stack's way: the bridge's `/initialpose` to `/sim/initialpose` (a pose there teleports the car) and map_server's `/map` to `/sim/map`. Each remap names its node (`bridge:/initialpose`), because the gym's launch also starts `foxglove_bridge`, which an unscoped remap would reach too.
+- `odom_model`'s `debug_map_to_odom` (`static`, `truth`) publishes `map -> odom` under its `map_frame`, plus a static identity `sim_world -> map`, so the stack's tree and the truth line up.
+- Foxglove: open `config/foxglove/polimi_sim.json` (fixed frame `sim_world`, `/sim/map`, the pose tool on `/sim/initialpose`); the launch logs its path.
+
 ## Tests
 
 ```bash
 python3 -m pytest test -q
 ```
 
-`test/lidar/test_raycast.py` needs f1tenth_gym and f1tenth_gym_ros, so it runs only in a simulator image.
+`test/lidar/test_raycast.py` needs f1tenth_gym and f1tenth_gym_ros, and `test/launch/` needs `launch_ros`, so they run only in a simulator image. Lint and types: `ruff check .` and `mypy` from this folder (`pyproject.toml`).

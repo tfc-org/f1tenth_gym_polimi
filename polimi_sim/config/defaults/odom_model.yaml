@@ -6,6 +6,7 @@
     publish_tf: true
     odom_frame: 'odom'
     base_frame: 'base_link'
+    map_frame: 'map'           # parent of the debug map -> odom; the truth frame is joined to it by an identity
     seed: 0                    # 0 = different every run
     # map -> odom for debugging. Leave 'off' whenever SLAM / localization publishes it.
     #   'static': fixed at the true start pose; /odom visibly drifts from the truth

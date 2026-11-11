@@ -1,0 +1,12 @@
+[tool.ruff]
+line-length = 140
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["ANN", "F", "E", "W", "B", "UP"]
+
+[tool.mypy]
+files = ["polimi_sim", "launch"]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true

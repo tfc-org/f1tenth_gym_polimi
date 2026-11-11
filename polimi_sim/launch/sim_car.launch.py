@@ -6,11 +6,11 @@ import os
 import launch.logging
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchContext, LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, OpaqueFunction
 from launch.launch_description_entity import LaunchDescriptionEntity
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
+from launch_ros.actions import Node, SetRemap
 
 from polimi_sim.common.gym_config import (
     build_gym_config,
@@ -29,6 +29,17 @@ IDEAL_ACTUATION: dict[str, float] = {
     'servo_rate': 1000.0, 'accel_max': 1000.0, 'brake_max': 1000.0,
 }
 IDEAL_ODOM: dict[str, float] = {'speed_scale_error': 0.0, 'speed_noise_std': 0.0, 'speed_deadband': 0.0}
+# /map and /initialpose belong to the stack (SLAM, AMCL). Each rule names its node, so it never
+# reaches the foxglove_bridge that the gym's launch starts.
+GYM_REMAPS: tuple[tuple[str, str], ...] = (
+    ('bridge:/initialpose', '/sim/initialpose'),
+    ('map_server:/map', '/sim/map'),
+)
+
+
+def with_gym_remaps(gym: LaunchDescriptionEntity) -> GroupAction:
+    """The gym's include, scoped with the node-scoped remaps of GYM_REMAPS."""
+    return GroupAction([*(SetRemap(src=src, dst=dst) for src, dst in GYM_REMAPS), gym])
 
 
 def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
@@ -76,7 +87,12 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
         PythonLaunchDescriptionSource(os.path.join(
             get_package_share_directory('f1tenth_gym_ros'), 'launch', 'gym_bridge_launch.py'
         )),
-        launch_arguments={'config': gym_config, 'open_foxglove': 'false'}.items(),
+        launch_arguments={
+            'config': gym_config, 'open_foxglove': 'false',
+            'foxglove_layout': os.path.join(
+                get_package_share_directory('polimi_sim'), 'config', 'foxglove', 'polimi_sim.json'
+            ),
+        }.items(),
     )
     lidar_model = Node(
         package='polimi_sim', executable='lidar_model', name='lidar_model', output='screen',
@@ -114,7 +130,7 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
             '--frame-id', 'base_link', '--child-frame-id', 'laser',
         ],
     )
-    return [gym, lidar_model, actuation_model, odom_model, teleop_bridge, ackermann_mux, static_tf]
+    return [with_gym_remaps(gym), lidar_model, actuation_model, odom_model, teleop_bridge, ackermann_mux, static_tf]
 
 
 def generate_launch_description() -> LaunchDescription:

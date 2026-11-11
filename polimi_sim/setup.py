@@ -13,6 +13,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         *[('share/' + package_name + '/' + d, glob(d + '/*.yaml'))
           for d in ['config/defaults', *sorted(g.rstrip('/') for g in glob('config/defaults/*/'))]],
+        ('share/' + package_name + '/config/foxglove', glob('config/foxglove/*.json')),
         ('share/' + package_name + '/launch', glob('launch/*.launch.py')),
     ],
     install_requires=['setuptools'],
