@@ -45,7 +45,8 @@ class ContactDebounce:
     """One contact per push: it starts on a rising edge of the collision flag and ends once the flag
     has stayed False for `debounce` seconds, so a flag that chatters during one push is one contact."""
 
-    def __init__(self, debounce: float = 0.1) -> None:
+    # Gate G-A (11 Nov 2026): pushing along a wall, the flag drops for up to 0.19 s between hits.
+    def __init__(self, debounce: float = 0.3) -> None:
         if debounce < 0.0:
             raise ValueError('debounce must be >= 0')
         self._debounce: float = debounce

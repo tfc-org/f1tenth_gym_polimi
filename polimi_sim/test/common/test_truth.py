@@ -54,3 +54,10 @@ def test_two_pushes_apart_are_two_contacts() -> None:
     flags = [True] * 10 + [False] * 50 + [True] * 10 + [False] * 50
     events = [contact.update(i * 0.004, flag) for i, flag in enumerate(flags)]
     assert [e for e in events if e] == ['start', 'end', 'start', 'end']
+
+
+def test_the_default_debounce_covers_the_drops_seen_along_a_wall() -> None:
+    contact = ContactDebounce()
+    flags = ([True] * 30 + [False] * 47) * 10 + [False] * 100  # 0.188 s drops at 250 Hz, as in gate G-A
+    events = [contact.update(i * 0.004, flag) for i, flag in enumerate(flags)]
+    assert [e for e in events if e] == ['start', 'end']
