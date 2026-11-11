@@ -53,7 +53,7 @@ def build_gym_config(
     _require(lidar, LIDAR_KEYS, 'the lidar file')
     config = copy.deepcopy(base)
     params: dict[str, Any] = config['bridge']['ros__parameters']
-    params.update(map_config)
+    params.update({key: value for key, value in map_config.items() if key != 'world'})  # world: for polimi_sim's nodes
     half_fov = float(lidar['fov_deg']) / 2.0
     params.update({
         'lidar_enabled': True,

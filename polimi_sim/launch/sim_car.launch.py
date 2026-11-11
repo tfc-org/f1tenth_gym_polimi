@@ -78,6 +78,7 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
     path_of = {**{k: f.path for k, f in files.items()}, **{k: v for k, v in overrides.items() if v}}
     map_file, lidar_file, mount_file, gym_file = (path_of[k] for k in ('map', 'lidar', 'mount', 'gym'))
     mount = load_mount(mount_file)
+    world = load_yaml(map_file).get('world', {})
     gym_config = write_gym_config(
         build_gym_config(load_yaml(gym_file), load_yaml(map_file), load_lidar(lidar_file), mount),
         f"{arg('map')}_{arg('lidar')}",
@@ -98,6 +99,7 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
         package='polimi_sim', executable='lidar_model', name='lidar_model', output='screen',
         parameters=[lidar_file, {
             'sim_config': gym_config,
+            'lidar_map': str(world.get('room_lidar', '')),
             'mount_x': mount['x'],
             'mount_y': mount['y'],
             'mount_yaw': mount['yaw'],

@@ -1,6 +1,8 @@
 """Ray casting on the gym's map, with the gym's own ray caster."""
 from __future__ import annotations
 
+import pathlib
+
 import numpy as np
 import yaml
 from f1tenth_gym.envs.lidar.segment_scan import SegmentScanSimulator2D
@@ -13,7 +15,7 @@ from polimi_sim.lidar.effects import FloatArray, ScanGeometry, block_bounds
 def load_gym_track(sim_config: str) -> Track:
     """The map a gym config loads, resolved and loaded like gym_bridge does."""
     # Private helpers of the pinned f1tenth_gym_ros: reused so both sides see the same map.
-    from f1tenth_gym_ros.gym_bridge import _load_track_from_yaml, _resolve_map_yaml_path
+    from f1tenth_gym_ros.gym_bridge import _resolve_map_yaml_path
 
     with open(sim_config) as config_file:
         params = yaml.safe_load(config_file)['bridge']['ros__parameters']
@@ -23,6 +25,13 @@ def load_gym_track(sim_config: str) -> Track:
     yaml_path = _resolve_map_yaml_path(map_path)
     if yaml_path is None:
         return Track.from_track_name(map_path, track_scale=scale)
+    return load_map_track(yaml_path, scale)
+
+
+def load_map_track(yaml_path: pathlib.Path, scale: float = 1.0) -> Track:
+    """A map_server yaml loaded like gym_bridge does, with or without a centre line."""
+    from f1tenth_gym_ros.gym_bridge import _load_track_from_yaml
+
     try:
         return Track.from_track_path(yaml_path, track_scale=scale)
     except (ValueError, FileNotFoundError) as ex:
