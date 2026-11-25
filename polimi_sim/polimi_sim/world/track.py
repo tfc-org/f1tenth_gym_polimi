@@ -8,6 +8,8 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
+from polimi_sim.common.se2 import wrap_angle
+
 FloatArray = npt.NDArray[np.float64]
 
 CLOSE_TOLERANCE = 0.01  # m
@@ -43,7 +45,7 @@ class CenterLine:
         a = (s - self.s[i]) / span if span > 0.0 else 0.0
         x, y = self.xy[i] + a * (self.xy[j] - self.xy[i])
         dh = math.atan2(math.sin(self.heading[j] - self.heading[i]), math.cos(self.heading[j] - self.heading[i]))
-        return float(x), float(y), float(self.heading[i] + a * dh)
+        return float(x), float(y), wrap_angle(float(self.heading[i] + a * dh))
 
     def offset(self, d: float) -> FloatArray:
         """The line at signed distance d from the centre line, positive to the left."""
