@@ -33,7 +33,7 @@ def _drive(monitor: TrackMonitor, s_values: np.ndarray, t0: float = 0.0, lateral
 
 
 def test_one_lap_along_the_centre_line_counts_once_and_is_valid() -> None:
-    monitor = TrackMonitor(LINE.xy, START, CONFIG)
+    monitor = TrackMonitor(LINE.xy, START - CONFIG.lr, CONFIG)
     statuses = _drive(monitor, START + np.arange(0.0, LINE.length + 1.0, 0.03))
     laps = [r for *_, finished in statuses for r in finished]
     assert len(laps) == 1 and laps[0].valid and laps[0].time == pytest.approx(LINE.length / 0.03 * DT, rel=0.01)
@@ -41,14 +41,14 @@ def test_one_lap_along_the_centre_line_counts_once_and_is_valid() -> None:
 
 
 def test_progress_never_jumps_through_the_hairpin_and_the_chicane() -> None:
-    monitor = TrackMonitor(LINE.xy, START, CONFIG)
+    monitor = TrackMonitor(LINE.xy, START - CONFIG.lr, CONFIG)
     progress = [p for p, *_ in _drive(monitor, START + np.arange(0.0, LINE.length - 0.05, 0.03))]
     steps = np.diff(progress)
     assert steps.min() > 0.0 and steps.max() < 0.06
 
 
 def test_the_offset_is_positive_to_the_left_and_off_track_past_the_rule() -> None:
-    monitor = TrackMonitor(LINE.xy, START, CONFIG)
+    monitor = TrackMonitor(LINE.xy, START - CONFIG.lr, CONFIG)
     limit = CONFIG.off_track_offset  # 0.5 + 0.05 + 0.1405
     assert limit == pytest.approx(0.6905)
     (_, on_left, offset_left, _), = _drive(monitor, np.array([START]), lateral=0.3)
@@ -59,18 +59,18 @@ def test_the_offset_is_positive_to_the_left_and_off_track_past_the_rule() -> Non
 
 def test_a_wider_car_goes_off_track_sooner() -> None:
     wide = MonitorConfig(width=1.0, tape_width=0.05, track_width=0.4, lr=CONFIG.lr)
-    on = [TrackMonitor(LINE.xy, START, cfg).update(0.0, *_rear_axle(START, 0.7), 0.0).on_track for cfg in (CONFIG, wide)]
+    on = [TrackMonitor(LINE.xy, START - CONFIG.lr, cfg).update(0.0, *_rear_axle(START, 0.7), 0.0).on_track for cfg in (CONFIG, wide)]
     assert on == [False, True]
 
 
 def test_back_and_forth_over_the_start_line_counts_no_lap() -> None:
-    monitor = TrackMonitor(LINE.xy, START, CONFIG)
+    monitor = TrackMonitor(LINE.xy, START - CONFIG.lr, CONFIG)
     wiggle = START + 0.5 * np.sin(np.linspace(0.0, 20.0 * math.pi, 2000))
     assert not any(finished for *_, finished in _drive(monitor, wiggle))
 
 
 def test_a_shortcut_across_the_infield_counts_no_lap() -> None:
-    monitor = TrackMonitor(LINE.xy, START, CONFIG)
+    monitor = TrackMonitor(LINE.xy, START - CONFIG.lr, CONFIG)
     half = START + np.arange(0.0, LINE.length / 2.0, 0.03)
     statuses = _drive(monitor, half)
     # jump straight back to just before the start line, as if cut across, then finish
@@ -79,7 +79,7 @@ def test_a_shortcut_across_the_infield_counts_no_lap() -> None:
 
 
 def test_a_contact_makes_the_lap_invalid() -> None:
-    monitor = TrackMonitor(LINE.xy, START, CONFIG)
+    monitor = TrackMonitor(LINE.xy, START - CONFIG.lr, CONFIG)
     _drive(monitor, START + np.arange(0.0, 3.0, 0.03))
     monitor.contact()
     statuses = _drive(monitor, START + np.arange(3.0, LINE.length + 0.5, 0.03), t0=1.0)
@@ -88,7 +88,7 @@ def test_a_contact_makes_the_lap_invalid() -> None:
 
 
 def test_after_a_reset_the_partial_lap_is_not_counted_but_the_next_one_is() -> None:
-    monitor = TrackMonitor(LINE.xy, START, CONFIG)
+    monitor = TrackMonitor(LINE.xy, START - CONFIG.lr, CONFIG)
     _drive(monitor, START + np.arange(0.0, 2.0, 0.03))
     monitor.jump()  # teleported to mid-lap
     mid = START + LINE.length / 2.0
@@ -98,7 +98,7 @@ def test_after_a_reset_the_partial_lap_is_not_counted_but_the_next_one_is() -> N
 
 
 def test_the_lap_clock_starts_when_the_car_moves_not_when_it_settles() -> None:
-    monitor = TrackMonitor(LINE.xy, START, CONFIG)
+    monitor = TrackMonitor(LINE.xy, START - CONFIG.lr, CONFIG)
     for i in range(500):  # parked for 5 s, creeping a few millimetres as the gym settles
         monitor.update(i * DT, *_rear_axle(START + 0.00004 * i), 0.0)
     laps = [r for *_, finished in _drive(monitor, START + 0.02 + np.arange(0.0, LINE.length, 0.03), t0=5.0)
@@ -113,3 +113,10 @@ def test_the_physics_rate_ignores_the_time_stood_still() -> None:
         rate.update(2.0 + i * DT, True)
     assert rate.take() == pytest.approx(100.0)
     assert rate.take() is None
+
+
+def test_the_first_lap_from_the_spawn_pose_is_a_full_lap() -> None:
+    monitor = TrackMonitor(LINE.xy, START, CONFIG)
+    statuses = _drive(monitor, START + CONFIG.lr + np.arange(0.0, LINE.length + 0.5, 0.03))
+    laps = [r for *_, finished in statuses for r in finished]
+    assert len(laps) == 1 and laps[0].time == pytest.approx(LINE.length / 0.03 * DT, abs=0.015)

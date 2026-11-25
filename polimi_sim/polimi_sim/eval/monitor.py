@@ -96,13 +96,17 @@ class PhysicsRate:
 
 class TrackMonitor:
     """A lap runs from the start line to the start line; it counts only if every checkpoint
-    (evenly spaced along it) was passed in order, so a shortcut or a back-and-forth never counts."""
+    (evenly spaced along it) was passed in order, so a shortcut or a back-and-forth never counts.
+
+    `start_s` is the arc length of the rear axle at the start (tape.yaml's `start_s`, where the car spawns).
+    Progress is measured at the CoG, so the start line sits `lr` ahead of it: every lap, the first included,
+    then runs from the car's start pose around to the same pose."""
 
     def __init__(self, centerline: FloatArray, start_s: float, config: MonitorConfig) -> None:
         self._config = config
         self._line = CenterLineProjector(centerline)
         self._length = self._line.length
-        self._start_s = start_s
+        self._start_s = (start_s + config.lr) % self._length
         self.status = Status()
         self._s: float | None = None  # arc length at the last pose; None until (re)acquired
         self._last: tuple[float, float, float] | None = None  # stamp, x, y of the CoG
