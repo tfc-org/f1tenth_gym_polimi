@@ -120,6 +120,11 @@ class TrackMonitorNode(Node):
         self._csv.flush()
         self.get_logger().info(f'lap {lap.lap}: {lap.time:.2f} s, {"valid" if lap.valid else "invalid"}')
 
+    def destroy_node(self) -> None:
+        if self._csv is not None:
+            self._csv.close()
+        super().destroy_node()
+
 
 def main(args: list[str] | None = None) -> None:
     rclpy.init(args=args)
