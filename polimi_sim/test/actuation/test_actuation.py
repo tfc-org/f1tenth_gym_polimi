@@ -59,7 +59,7 @@ def test_servo_delay_and_slew_limit() -> None:
 
 
 def test_offset_applied_once_and_clamped() -> None:
-    cfg = ActuationConfig(command_delay=0.0, servo_delay=0.0, steer_offset=0.05, max_steer=0.4, **FAST)
+    cfg = ActuationConfig(command_delay=0.0, servo_delay=0.0, steer_offset=0.05, max_steer_left=0.4, **FAST)
     model = ActuationModel(cfg)
     model.command(0.0, 0.0, 0.1)
     outs = run(model, 0.0, 0.1)
@@ -100,3 +100,12 @@ def test_config_is_validated() -> None:
         ActuationConfig(servo_rate=0.0)
     with pytest.raises(ValueError):
         ActuationConfig(command_delay=-0.1)
+
+
+def test_the_clamp_can_differ_left_and_right() -> None:
+    cfg = ActuationConfig(command_delay=0.0, servo_delay=0.0, max_steer_left=0.3135, max_steer_right=0.2634, **FAST)
+    model = ActuationModel(cfg)
+    model.command(0.0, 0.0, 1.0)
+    assert model.step(0.0).steering_command == pytest.approx(0.3135)
+    model.command(0.01, 0.0, -1.0)
+    assert model.step(0.01).steering_command == pytest.approx(-0.2634)

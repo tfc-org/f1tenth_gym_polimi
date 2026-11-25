@@ -14,7 +14,7 @@
     debug_map_to_odom: 'off'
 
     # Can be changed while running.
-    wheelbase: 0.3302          # m, gym f1tenth (lf + lr). The car's vesc.yaml has 0.25 [MEASURE]
+    # wheelbase: the launch sets it to the gym preset's lf + lr, so the odometry turns like the simulated car.
     speed_scale_error: 0.02    # measured = true * (1 + this)
     speed_noise_std: 0.02      # m/s
     speed_deadband: 0.05       # m/s, vesc_to_odom zeroes slower readings

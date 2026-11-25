@@ -1,0 +1,5 @@
+# Default: stock f1tenth / datasheet values, not a measured car. Pass config_dir:= for a real car.
+# The car's body where f1tenth_gym's vehicle preset cannot hold it. lf, lr and s_max stay the preset's.
+track_width: 0.281        # m, between the wheel centres (Traxxas spec) [MEASURE]
+steer_max_left: 0.3135    # rad, servo clamp to the left, from f1tenth_stack's vesc.yaml [MEASURE]
+steer_max_right: 0.2634   # rad, to the right [MEASURE]

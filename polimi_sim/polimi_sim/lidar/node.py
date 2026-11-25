@@ -1,6 +1,7 @@
 """lidar_model: an SL450-like /scan from the gym's ground-truth pose and map."""
 from __future__ import annotations
 
+import pathlib
 from array import array
 from typing import Any
 
@@ -15,6 +16,7 @@ from sensor_msgs.msg import LaserScan
 
 from polimi_sim.common.ros_utils import RelativeClock, declare, with_updates, yaw_from_quaternion
 from polimi_sim.common.se2 import Pose2D, PoseBuffer, Twist2D
+from polimi_sim.common.truth import TeleportDetector
 from polimi_sim.lidar.effects import (
     EffectsConfig,
     ScanGeometry,
@@ -22,7 +24,7 @@ from polimi_sim.lidar.effects import (
     distorted_scan,
     scan_geometry,
 )
-from polimi_sim.lidar.raycast import BlockCaster, load_gym_track
+from polimi_sim.lidar.raycast import BlockCaster, load_gym_track, load_map_track
 
 SL450_RATES_HZ: tuple[float, ...] = (15.0, 20.0, 25.0, 30.0, 40.0)
 
@@ -55,6 +57,7 @@ class LidarModelNode(Node):
         super().__init__('lidar_model')
         p = declare(self, {
             'sim_config': '',
+            'lidar_map': '',
             'truth_odom_topic': 'ego_racecar/odom',
             'scan_topic': 'scan',
             'frame_id': 'laser',
@@ -89,9 +92,10 @@ class LidarModelNode(Node):
         self._frame_id: str = p['frame_id']
         self._rng: np.random.Generator = np.random.default_rng(p['seed'] or None)
 
-        self._caster: BlockCaster = BlockCaster(
-            load_gym_track(p['sim_config']), self._geometry, self._effects.range_max, self._blocks
-        )
+        # A room world gives the laser its own slice of the room; otherwise it sees the gym's map.
+        track = load_map_track(pathlib.Path(p['lidar_map'])) if p['lidar_map'] else load_gym_track(p['sim_config'])
+        self._caster: BlockCaster = BlockCaster(track, self._geometry, self._effects.range_max, self._blocks)
+        self._teleports: TeleportDetector = TeleportDetector()
         self._rel_clock: RelativeClock = RelativeClock(self)
         # Extrapolation covers the age of the newest truth pose (physics step 10 ms + publish 4 ms).
         self._poses: PoseBuffer = PoseBuffer(horizon=0.5, max_extrapolation=0.03)
@@ -103,7 +107,7 @@ class LidarModelNode(Node):
         g = self._geometry
         self.get_logger().info(
             f'{g.num_beams} beams at {p["rate_hz"]} Hz, sweep {g.sweep_time * 1e3:.2f} ms, '
-            f'{self._blocks} blocks, map from {p["sim_config"]}'
+            f'{self._blocks} blocks, map from {p["lidar_map"] or p["sim_config"]}'
         )
 
     def _on_set_parameters(self, params: list[Parameter]) -> SetParametersResult:
@@ -125,8 +129,13 @@ class LidarModelNode(Node):
         # The bridge republishes each physics step several times: keep the first of each.
         if pose == self._poses.newest():
             return
+        stamp = self._rel_clock.from_msg(msg.header.stamp)
+        if self._teleports.update(stamp, pose):
+            # A reset: never interpolate across it, so no scan is smeared over the jump.
+            self._poses.clear()
+            self.get_logger().info(f'truth jumped to ({pose.x:.2f}, {pose.y:.2f}): pose buffer cleared')
         twist = Twist2D(msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.angular.z)
-        self._poses.add(self._rel_clock.from_msg(msg.header.stamp), pose, twist)
+        self._poses.add(stamp, pose, twist)
 
     def _pose_at(self, stamp: float) -> Pose2D:
         pose = self._poses.sample(stamp)

@@ -51,6 +51,6 @@ def test_missing_everywhere_raises(dirs: tuple[str, str]) -> None:
 
 def test_every_default_file_carries_the_label() -> None:
     files = sorted(DEFAULTS.rglob('*.yaml'))
-    assert len(files) == 8
+    assert len(files) == 9
     for path in files:
         assert path.read_text().splitlines()[0] == DEFAULT_LABEL, path

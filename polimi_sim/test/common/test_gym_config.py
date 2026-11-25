@@ -56,3 +56,17 @@ def test_files_round_trip(tmp_path, monkeypatch) -> None:  # noqa: ANN001
     assert path.endswith('polimi_sim/gym_spielberg_sl450.yaml')
     with open(path) as written:
         assert yaml.safe_load(written)['bridge']['ros__parameters']['scan_num_beams'] == 1351
+
+
+def test_the_world_block_stays_out_of_the_gym_config() -> None:
+    world_map = dict(MAP, world={'room_lidar': '/maps/demo_room/room_lidar.yaml'})
+    params = build_gym_config(BASE, world_map, LIDAR, MOUNT)['bridge']['ros__parameters']
+    assert 'world' not in params and params['map_path'] == 'maps/Spielberg'
+
+
+def test_a_relative_map_path_is_resolved_against_the_map_file() -> None:
+    relative = dict(MAP, map_path='./../../maps/demo_room/room.yaml')
+    params = build_gym_config(BASE, relative, LIDAR, MOUNT, '/home/me/ws/config/maps')['bridge']['ros__parameters']
+    assert params['map_path'] == '/home/me/ws/maps/demo_room/room.yaml'
+    shipped = build_gym_config(BASE, MAP, LIDAR, MOUNT, '/home/me/ws/config/maps')['bridge']['ros__parameters']
+    assert shipped['map_path'] == 'maps/Spielberg'  # relative to the gym's share, untouched
