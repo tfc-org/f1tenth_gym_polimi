@@ -234,6 +234,9 @@
         "/sim/map": {
           "visible": true
         },
+        "/sim/truth/tape": {
+          "visible": true
+        },
         "/move_base_simple/goal": {
           "visible": false
         },
@@ -528,6 +531,9 @@
       },
       "topics": {
         "/sim/map": {
+          "visible": true
+        },
+        "/sim/truth/tape": {
           "visible": true
         },
         "/move_base_simple/goal": {

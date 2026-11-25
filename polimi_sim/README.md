@@ -51,7 +51,7 @@ It warns when `config_dir` lacks one of the measured car's files (`car/`, `lidar
 - The gym's truth is in `sim_world` (`truth_frame` in `sim/gym.yaml`, a parameter of this fork's bridge): the TF `sim_world -> ego_racecar/base_link`, `/ego_racecar/odom` and the gym's map. `map` stays free for SLAM and AMCL.
 - Two gym topics move out of the stack's way: the bridge's `/initialpose` to `/sim/initialpose` (a pose there teleports the car) and map_server's `/map` to `/sim/map`. Each remap names its node (`bridge:/initialpose`), because the gym's launch also starts `foxglove_bridge`, which an unscoped remap would reach too.
 - `odom_model`'s `debug_map_to_odom` (`static`, `truth`) publishes `map -> odom` under its `map_frame`, plus a static identity `sim_world -> map`, so the stack's tree and the truth line up.
-- Foxglove: open `config/foxglove/polimi_sim.json` (fixed frame `sim_world`, `/sim/map`, the pose tool on `/sim/initialpose`); the launch logs its path.
+- Foxglove: open `config/foxglove/polimi_sim.json` (fixed frame `sim_world`, `/sim/map`, `/scan` and the tape `/sim/truth/tape` in both 3D panels, the pose tool on `/sim/initialpose`); the launch logs its path. Topic visibility is per panel. `/scan` is in the car's `laser` frame, so it shows only when something publishes `map -> odom`: `debug_map_to_odom:=truth`, `make sim-ideal`, or localization.
 
 ## Tests
 
