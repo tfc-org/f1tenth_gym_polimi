@@ -16,14 +16,19 @@ class TeleportConfig:
     yaw_rate_max: float = 30.0  # rad/s, about v_max * tan(s_max) / wheelbase
     position_margin: float = 0.05  # m
     heading_margin: float = 0.1  # rad
+    max_gap: float = 0.05
 
     def __post_init__(self) -> None:
-        if min(self.v_max, self.yaw_rate_max) <= 0.0 or min(self.position_margin, self.heading_margin) < 0.0:
-            raise ValueError('v_max and yaw_rate_max must be > 0, the margins >= 0')
+        if min(self.v_max, self.yaw_rate_max, self.max_gap) <= 0.0 or min(self.position_margin, self.heading_margin) < 0.0:
+            raise ValueError('v_max, yaw_rate_max and max_gap must be > 0, the margins >= 0')
 
 
 class TeleportDetector:
-    """A truth pose further from the previous one than the car can move in the time between them."""
+    """A truth pose further from the previous one than the car can move in the time between them.
+
+    The time is capped at `max_gap`: callers drop the bridge's repeated poses, so after a stop the
+    previous distinct pose is as old as the stop, and an uncapped gap would hide a reset.
+    """
 
     def __init__(self, config: TeleportConfig | None = None) -> None:
         self._config: TeleportConfig = config or TeleportConfig()
@@ -34,8 +39,8 @@ class TeleportDetector:
         previous, self._last = self._last, (stamp, pose)
         if previous is None:
             return False
-        dt = max(stamp - previous[0], 0.0)
         c = self._config
+        dt = min(max(stamp - previous[0], 0.0), c.max_gap)
         moved = math.hypot(pose.x - previous[1].x, pose.y - previous[1].y)
         turned = abs(wrap_angle(pose.yaw - previous[1].yaw))
         return moved > c.v_max * dt + c.position_margin or turned > c.yaw_rate_max * dt + c.heading_margin

@@ -35,6 +35,19 @@ def test_the_same_pose_after_a_long_gap_is_not_a_teleport() -> None:
     assert detector.update(5.0, Pose2D(1.0, 1.0, -3.1)) is False
 
 
+def test_a_reset_after_a_stop_is_a_teleport() -> None:
+    detector = TeleportDetector()
+    detector.update(0.0, Pose2D(0.0, 0.0, 0.0))
+    assert detector.update(2.0, Pose2D(3.0, 0.0, 0.0)) is True
+
+
+def test_the_top_speed_is_not_a_teleport_after_a_stop() -> None:
+    detector = TeleportDetector()
+    detector.update(0.0, Pose2D(0.0, 0.0, 0.0))
+    jumps = [detector.update(2.0 + i * STEP, Pose2D(20.0 * i * STEP, 0.0, 0.0)) for i in range(1, 100)]
+    assert not any(jumps)
+
+
 def test_a_collision_is_one_contact_with_a_start_and_an_end() -> None:
     contact = ContactDebounce(debounce=0.1)
     events = [contact.update(t * 0.004, t < 50) for t in range(200)]
