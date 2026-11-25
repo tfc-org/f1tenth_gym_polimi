@@ -68,7 +68,7 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
             car, truth_frame = load_car(config_dir)
             for line in generate(world_source, config_dir, car, truth_frame=truth_frame):
                 launch.logging.get_logger('make_world').info(line)
-        except ValueError as ex:
+        except (ValueError, KeyError, FileNotFoundError) as ex:
             raise RuntimeError(f'make_world {world_source}: {ex}') from ex
     defaults = os.path.join(get_package_share_directory('polimi_sim'), 'config', 'defaults')
     relative = {
