@@ -16,10 +16,12 @@ class SimResetNode(Node):
         super().__init__('sim_reset')
         p = declare(self, {
             'sx': 0.0, 'sy': 0.0, 'stheta': 0.0,
-            'truth_frame': 'sim_world',
+            'truth_frame': '',
             'initialpose_topic': '/sim/initialpose',
             'odom_reset_service': '/odom_model/reset',
         })
+        if not p['truth_frame']:
+            raise ValueError("truth_frame (the gym's) is required")
         self._start = Pose()
         self._start.position.x, self._start.position.y = p['sx'], p['sy']
         self._start.orientation = quaternion_from_yaw(p['stheta'])

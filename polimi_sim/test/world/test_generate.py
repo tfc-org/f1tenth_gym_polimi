@@ -64,17 +64,17 @@ def test_a_corner_tighter_than_the_car_fails_unless_allowed(tmp_path: pathlib.Pa
     tight['track']['primitives'][5] = {'arc': {'radius': 1.3, 'angle': -60}}  # right turn, needs 1.42 m
     source, config = _write(tmp_path, tight)
     with pytest.raises(ValueError, match='right corner of radius 1.30'):
-        generate(source, config, CAR)
+        generate(source, config, CAR, 'sim_world')
     left = copy.deepcopy(SOURCE)
     left['track']['primitives'][2] = {'arc': {'radius': 1.2, 'angle': 90}}  # left turn, needs 1.22 m
     source, config = _write(tmp_path, left)
     with pytest.raises(ValueError, match='left corner of radius 1.20'):
-        generate(source, config, CAR)
+        generate(source, config, CAR, 'sim_world')
 
 
 def test_the_maps_and_the_lidar_slice(tmp_path: pathlib.Path) -> None:
     source, config = _write(tmp_path, SOURCE)
-    generate(source, config, CAR)
+    generate(source, config, CAR, 'sim_world')
     world = tmp_path / 'maps' / 'demo'
     for image in ('room.png', 'room_lidar.png'):
         values = set(np.unique(cv2.imread(str(world / image), cv2.IMREAD_GRAYSCALE)))
@@ -88,7 +88,7 @@ def test_the_maps_and_the_lidar_slice(tmp_path: pathlib.Path) -> None:
 
 def test_the_config_names_the_world_and_nothing_turns_on_the_gyms_laps(tmp_path: pathlib.Path) -> None:
     source, config = _write(tmp_path, SOURCE)
-    generate(source, config, CAR)
+    generate(source, config, CAR, 'sim_world')
     map_file = pathlib.Path(config) / 'maps' / 'demo.yaml'
     entry = yaml.safe_load(map_file.read_text())
     for path in (entry['map_path'], *entry['world'].values()):
@@ -101,15 +101,15 @@ def test_the_config_names_the_world_and_nothing_turns_on_the_gyms_laps(tmp_path:
 
 def test_the_start_puts_the_rear_axle_on_the_centre_line(tmp_path: pathlib.Path) -> None:
     source, config = _write(tmp_path, SOURCE)
-    generate(source, config, CAR)
+    generate(source, config, CAR, 'sim_world')
     entry = yaml.safe_load((pathlib.Path(config) / 'maps' / 'demo.yaml').read_text())
     assert (entry['sx'], entry['sy'], entry['stheta']) == pytest.approx((2.875 + 2.0, 2.25, 0.0), abs=1e-3)
 
 
 def test_regenerating_writes_the_same_bytes(tmp_path: pathlib.Path) -> None:
     source, config = _write(tmp_path, SOURCE)
-    generate(source, config, CAR)
+    generate(source, config, CAR, 'sim_world')
     files = sorted(p for p in tmp_path.rglob('*') if p.is_file() and 'src' not in p.parts)
     first = {p: p.read_bytes() for p in files}
-    generate(source, config, CAR)
+    generate(source, config, CAR, 'sim_world')
     assert {p: p.read_bytes() for p in files} == first

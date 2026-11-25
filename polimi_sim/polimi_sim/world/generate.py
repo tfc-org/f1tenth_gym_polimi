@@ -110,7 +110,7 @@ def check_track(primitives: list[Any], car: Car, allow_tight: bool) -> list[str]
 
 
 def generate(
-    source_path: str, config_dir: str, car: Car, allow_tight: bool = False, truth_frame: str = 'sim_world'
+    source_path: str, config_dir: str, car: Car, truth_frame: str, allow_tight: bool = False
 ) -> list[str]:
     """Write the world's files; returns the report. Raises ValueError when a hard check fails."""
     with open(source_path) as source_file:
@@ -186,7 +186,7 @@ def main(argv: list[str] | None = None) -> None:
 
     try:
         car, truth_frame = load_car(args.config_dir)
-        for line in generate(args.source, args.config_dir, car, args.allow_tight, truth_frame):
+        for line in generate(args.source, args.config_dir, car, truth_frame, args.allow_tight):
             print(line)
     except (ValueError, KeyError, FileNotFoundError) as ex:
         print(f'make_world: {ex}', file=sys.stderr)

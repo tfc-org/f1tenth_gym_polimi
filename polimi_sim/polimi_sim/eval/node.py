@@ -28,8 +28,8 @@ class TrackMonitorNode(Node):
         p = declare(self, {
             'tape': '',
             'world': 'world',
-            'lr': 0.17145,
-            'track_width': 0.281,
+            'lr': 0.0,
+            'track_width': 0.0,
             'checkpoints': 10,
             'search_window': 1.0,
             'contact_debounce': 0.3,
@@ -39,6 +39,8 @@ class TrackMonitorNode(Node):
         })
         if not p['tape']:
             raise ValueError('tape (path of the world tape.yaml) is required')
+        if p['lr'] <= 0.0 or p['track_width'] <= 0.0:
+            raise ValueError('lr and track_width are required (> 0): the launch takes them from the vehicle preset and car/body.yaml')
         with open(p['tape']) as tape_file:
             tape = yaml.safe_load(tape_file)
         config = MonitorConfig(

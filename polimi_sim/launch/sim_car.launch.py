@@ -151,17 +151,18 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
         ],
     )
     start = gym_params['bridge']['ros__parameters']
+    truth_frame = str(start.get('truth_frame', 'map'))
     sim_reset = Node(
         package='polimi_sim', executable='sim_reset', name='sim_reset', output='screen',
         parameters=[{'sx': float(start['sx']), 'sy': float(start['sy']), 'stheta': float(start['stheta']),
-                     'truth_frame': str(start.get('truth_frame', 'map'))}],
+                     'truth_frame': truth_frame}],
     )
     nodes = [with_gym_remaps(gym), lidar_model, actuation_model, odom_model, teleop_bridge, ackermann_mux, static_tf,
              sim_reset]
     if 'tape' in world:  # a room world: the track's truth and its evaluation
         nodes.append(Node(
             package='polimi_sim', executable='world_publisher', name='world_publisher', output='screen',
-            parameters=[{'tape': world['tape'], 'truth_frame': str(start.get('truth_frame', 'map'))}],
+            parameters=[{'tape': world['tape'], 'truth_frame': truth_frame}],
         ))
         nodes.append(Node(
             package='polimi_sim', executable='track_monitor', name='track_monitor', output='screen',

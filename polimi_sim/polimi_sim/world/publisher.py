@@ -16,9 +16,9 @@ from polimi_sim.common.ros_utils import declare
 class WorldPublisherNode(Node):
     def __init__(self) -> None:
         super().__init__('world_publisher')
-        p = declare(self, {'tape': '', 'truth_frame': 'sim_world'})
-        if not p['tape']:
-            raise ValueError('tape (path of the world tape.yaml) is required')
+        p = declare(self, {'tape': '', 'truth_frame': ''})
+        if not p['tape'] or not p['truth_frame']:
+            raise ValueError('tape (path of the world tape.yaml) and truth_frame (the gym\'s) are required')
         with open(p['tape']) as tape_file:
             tape = yaml.safe_load(tape_file)
         r, g, b = (float(c) / 255.0 for c in tape['rgb'])
