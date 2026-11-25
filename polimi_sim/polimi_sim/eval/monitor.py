@@ -72,6 +72,28 @@ class CenterLineProjector:
         return float(self.s0[i] + t[k] * self.seg[i]) % self.length, side * float(dist[k])
 
 
+class PhysicsRate:
+    """Distinct truth poses per second while driving; a gap counts only between two moving poses,
+    so the time the car stood still never enters the rate."""
+
+    def __init__(self) -> None:
+        self._last: tuple[float, bool] | None = None
+        self._poses = 0
+        self._time = 0.0
+
+    def update(self, stamp: float, moving: bool) -> None:
+        if self._last is not None and moving and self._last[1]:
+            self._poses += 1
+            self._time += max(stamp - self._last[0], 0.0)
+        self._last = (stamp, moving)
+
+    def take(self, min_time: float = 0.5) -> float | None:
+        """The rate since the last call, or None after less than `min_time` of driving; starts a new window."""
+        rate = self._poses / self._time if self._time > min_time else None
+        self._poses, self._time = 0, 0.0
+        return rate
+
+
 class TrackMonitor:
     """A lap runs from the start line to the start line; it counts only if every checkpoint
     (evenly spaced along it) was passed in order, so a shortcut or a back-and-forth never counts."""

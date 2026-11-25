@@ -17,7 +17,7 @@ from std_msgs.msg import Bool, Float64, Int32
 from polimi_sim.common.ros_utils import RelativeClock, declare, yaw_from_quaternion
 from polimi_sim.common.se2 import Pose2D
 from polimi_sim.common.truth import ContactDebounce, TeleportDetector
-from polimi_sim.eval.monitor import MOVING, LapRecord, MonitorConfig, TrackMonitor
+from polimi_sim.eval.monitor import MOVING, LapRecord, MonitorConfig, PhysicsRate, TrackMonitor
 
 CSV_HEADER = 'lap,time_s,valid,max_offset_m,time_off_track_s\n'
 
@@ -55,9 +55,7 @@ class TrackMonitorNode(Node):
         self._collisions = 0
         self._last_pose: Pose2D | None = None
         self._odom_msgs = 0
-        self._distinct_moving = 0
-        self._moving_time = 0.0
-        self._last_stamp: float | None = None
+        self._rate = PhysicsRate()
 
         self._pubs = {name: self.create_publisher(kind, f'/sim/eval/{name}', 10) for name, kind in (
             ('on_track', Bool), ('lateral_offset', Float64), ('progress', Float64),
@@ -83,10 +81,8 @@ class TrackMonitorNode(Node):
         if pose == self._last_pose:
             return  # the bridge republishes each physics step
         stamp = self._rel_clock.from_msg(msg.header.stamp)
-        if self._last_stamp is not None and abs(msg.twist.twist.linear.x) > MOVING:
-            self._distinct_moving += 1
-            self._moving_time += stamp - self._last_stamp
-        self._last_pose, self._last_stamp = pose, stamp
+        self._rate.update(stamp, abs(msg.twist.twist.linear.x) > MOVING)
+        self._last_pose = pose
         if self._teleports.update(stamp, pose):
             self._monitor.jump()
             self.get_logger().info('truth jumped (a reset): the lap restarts at the next start line')
@@ -101,12 +97,11 @@ class TrackMonitorNode(Node):
     def _on_health(self) -> None:
         self._odom_rate.publish(Float64(data=float(self._odom_msgs)))
         self._odom_msgs = 0
-        if self._moving_time > 0.5:
-            rate = self._distinct_moving / self._moving_time
+        rate = self._rate.take()
+        if rate is not None:
             self._physics_rate.publish(Float64(data=rate))
             if rate < 95.0:
                 self.get_logger().warning(f'physics at {rate:.0f} Hz, expected 100: the gym is starved')
-        self._distinct_moving, self._moving_time = 0, 0.0
 
     def _write_lap(self, lap: LapRecord) -> None:
         if self._csv is None:

@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from polimi_sim.eval.monitor import MonitorConfig, TrackMonitor
+from polimi_sim.eval.monitor import MonitorConfig, PhysicsRate, TrackMonitor
 from polimi_sim.world.track import CenterLine, centerline, parse_primitives
 
 LOOP = [
@@ -104,3 +104,12 @@ def test_the_lap_clock_starts_when_the_car_moves_not_when_it_settles() -> None:
     laps = [r for *_, finished in _drive(monitor, START + 0.02 + np.arange(0.0, LINE.length, 0.03), t0=5.0)
             for r in finished]
     assert len(laps) == 1 and laps[0].time == pytest.approx(LINE.length / 0.03 * DT, rel=0.01)
+
+
+def test_the_physics_rate_ignores_the_time_stood_still() -> None:
+    rate = PhysicsRate()
+    rate.update(0.0, False)
+    for i in range(100):
+        rate.update(2.0 + i * DT, True)
+    assert rate.take() == pytest.approx(100.0)
+    assert rate.take() is None
