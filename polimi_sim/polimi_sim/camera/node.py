@@ -178,8 +178,11 @@ class CameraModelNode(Node):
         try:
             os.makedirs(directory, exist_ok=True)
         except OSError:
+            pass
+        if not (os.path.isdir(directory) and os.access(directory, os.W_OK)):
             directory = os.path.join(tempfile.gettempdir(), 'polimi_sim')
             os.makedirs(directory, exist_ok=True)
+            self.get_logger().warning(f'{self._benchmark_dir} is not writable: the benchmark goes to {directory}')
         path = os.path.join(directory, f'camera_{self._world}_{self._camera.profile}_{time.strftime("%Y%m%d-%H%M%S")}.json')
         with open(path, 'w') as out:
             json.dump(result, out, indent=2)
