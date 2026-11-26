@@ -114,7 +114,7 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
             get_package_share_directory('f1tenth_gym_ros'), 'launch', 'gym_bridge_launch.py'
         )),
         launch_arguments={
-            'config': gym_config, 'open_foxglove': 'false',
+            'config': gym_config, 'open_foxglove': 'false', 'foxglove_port': arg('foxglove_port'),
             'foxglove_layout': os.path.join(
                 get_package_share_directory('polimi_sim'), 'config', 'foxglove', 'polimi_sim.json'
             ),
@@ -228,6 +228,7 @@ def generate_launch_description() -> LaunchDescription:
         ('teleop_params', '', 'teleop_bridge parameter file; empty = teleop_bridge.yaml from the overlay.'),
         ('ideal', 'false', 'true: no sensor or actuator imperfections, and debug_map_to_odom truth.'),
         ('debug_map_to_odom', 'off', 'map -> odom for debugging: off | static | truth. off with SLAM.'),
+        ('foxglove_port', '8765', 'Port foxglove_bridge listens on; the scripts pass FOXGLOVE_PORT, published 1:1 on the host.'),
         ('camera', 'gemini_335l', 'Camera: a file name in camera/, drawn on a map with a world: block; none = no camera.'),
         ('camera_profile', '', "The camera file's profile (720p30); empty = the file's own."),
     ]
