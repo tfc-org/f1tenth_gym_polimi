@@ -1,0 +1,26 @@
+# Default: stock f1tenth / datasheet values, not a measured car. Pass config_dir:= for a real car.
+# Orbbec Gemini 335L colour stream as camera_model draws it. Topic and frame names copy orbbec_camera
+# (OrbbecSDK_ROS2 v2-main, gemini_330_series.launch.py, camera_name camera).
+# Plan 04 test 17 replaces the intrinsics with the factory calibration (paste fx, fy, cx, cy, d unchanged).
+profile: 720p30
+profiles:
+  720p30:
+    width: 1280             # orbbec_camera's default colour resolution for the 335L (SDK default, v2-main c153462)
+    height: 720
+    rate_hz: 30.0           # the same default
+    # Pinhole of the 1280x720 crop of the 1280x800 colour sensor, square pixels, centred:
+    # fx = fy = 640 / tan(94 deg / 2) = 596.8 px, from the 94 x 68 deg colour FOV of the full sensor
+    # (Orbbec Gemini 330 series datasheet, document and page not checked) [VERIFY]. Vertical FOV of the crop
+    # 2 atan(360 / 596.8) = 62.2 deg; the full sensor's 400 rows give 67.7 deg, consistent with the 68.
+    fx: 596.8
+    fy: 596.8
+    cx: 639.5               # image centre, pixel-centre convention [VERIFY] factory calibration
+    cy: 359.5
+    distortion_model: plumb_bob   # orbbec_camera's camera_info model [VERIFY] O-07
+    d: [0.0, 0.0, 0.0, 0.0, 0.0]  # k1 k2 p1 p2 k3: none until the factory calibration [VERIFY]
+# camera_link -> colour sensor (camera_link at the depth / left IR origin, x forward, y left, z up).
+# 23.75 mm between the left IR and the colour sensor; colour on the right IR's side (-y) [VERIFY] O-08.
+color_in_camera_link:
+  x: 0.0
+  y: -0.02375
+  z: 0.0

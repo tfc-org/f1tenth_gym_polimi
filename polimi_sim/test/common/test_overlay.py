@@ -51,6 +51,14 @@ def test_missing_everywhere_raises(dirs: tuple[str, str]) -> None:
 
 def test_every_default_file_carries_the_label() -> None:
     files = sorted(DEFAULTS.rglob('*.yaml'))
-    assert len(files) == 9
+    assert len(files) == 11
     for path in files:
         assert path.read_text().splitlines()[0] == DEFAULT_LABEL, path
+
+
+def test_a_default_camera_file_warns_like_the_car_files(dirs: tuple[str, str]) -> None:
+    own, defaults = dirs
+    (Path(defaults) / 'camera').mkdir()
+    (Path(defaults) / 'camera/gemini_335l.yaml').write_text('default')
+    _, warnings = report([resolve('camera/gemini_335l.yaml', own, defaults)], own)
+    assert warnings == [f'config: camera/gemini_335l.yaml not in {own}, using the default']

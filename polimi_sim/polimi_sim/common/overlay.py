@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from typing import NamedTuple
 
-MEASURED: tuple[str, ...] = ('car/', 'lidar/')
+MEASURED: tuple[str, ...] = ('car/', 'lidar/', 'camera/')
 DEFAULT_LABEL = '# Default: stock f1tenth / datasheet values, not a measured car. Pass config_dir:= for a real car.'
 
 
