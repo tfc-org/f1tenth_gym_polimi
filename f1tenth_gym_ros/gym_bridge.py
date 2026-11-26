@@ -907,7 +907,8 @@ def main(args=None):
         # KeyboardInterrupt traceback from JAX's atexit cache cleanup.
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         gym_bridge.destroy_node()
-        rclpy.try_shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
