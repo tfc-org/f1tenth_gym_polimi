@@ -4,6 +4,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -39,11 +40,12 @@ def scan_geometry(rate_hz: float, fov_deg: float, resolution_deg: float) -> Scan
     scan_time = 1.0 / rate_hz
     time_increment = scan_time / beams_per_revolution
     half_fov = math.radians(fov_deg) / 2.0
+    increment = math.radians(resolution_deg)
     return ScanGeometry(
         num_beams=num_beams,
         angle_min=-half_fov,
-        angle_max=half_fov,
-        angle_increment=math.radians(resolution_deg),
+        angle_max=-half_fov + (num_beams - 1) * increment,
+        angle_increment=increment,
         time_increment=time_increment,
         scan_time=scan_time,
         sweep_time=(num_beams - 1) * time_increment,
@@ -103,6 +105,31 @@ class EffectsConfig:
             raise ValueError('mixed_pixel_jump must be > 0, grazing_max_deg in (0, 90]')
         if not 0.0 <= self.range_min < self.range_max:
             raise ValueError('need 0 <= range_min < range_max')
+
+
+EFFECT_DEFAULTS: dict[str, Any] = {
+    'effects_enabled': True,
+    'range_min': 0.05,
+    'range_max': 25.0,
+    'no_return_value': 'inf',
+    'noise_std': 0.01,
+    'dropout_prob': 0.002,
+    'grazing_max_deg': 80.0,
+    'grazing_dropout_prob': 0.5,
+    'reflectivity_range_max': 15.0,
+    'mixed_pixel_jump': 0.3,
+    'mixed_pixel_prob': 0.3,
+}
+
+
+def effects_config(values: dict[str, Any]) -> EffectsConfig:
+    """The lidar_model parameters (names as in EFFECT_DEFAULTS) as an EffectsConfig."""
+    fields = {k: v for k, v in values.items() if k not in ('effects_enabled', 'no_return_value')}
+    return EffectsConfig(
+        enabled=bool(values['effects_enabled']),
+        no_return_value=float(values['no_return_value']),
+        **fields,
+    )
 
 
 def valid_returns(

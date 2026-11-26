@@ -6,4 +6,4 @@ base_link_to_laser:
   y: 0.0      # m, left
   z: 0.11     # m, up
   yaw: 0.0    # rad
-  roll: 0.0   # rad (3.1416 if the sensor is mounted upside down)
+  roll: 0.0   # rad; only 0 is supported: lidar_model casts upright, so the launch refuses |roll| > 0.1

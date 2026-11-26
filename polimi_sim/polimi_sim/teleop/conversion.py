@@ -19,7 +19,10 @@ def twist_to_ackermann(
     steering_angle: angular_z is the steering angle in rad.
     yaw_rate: angular_z is a yaw rate; steering = atan(L * w / v), with |v| held
     at `min_speed` or more so a slow car doesn't snap to full lock.
+    A non-finite input stops the car: min/max would turn a NaN into full lock.
     """
+    if not (math.isfinite(linear_x) and math.isfinite(angular_z)):
+        return 0.0, 0.0
     if angular_mode == 'steering_angle':
         steer = angular_z
     elif angular_mode == 'yaw_rate':

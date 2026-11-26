@@ -139,7 +139,7 @@ class OdomModelNode(Node):
         if self._true_speed is None or self._steering_command is None:
             return
         now = self._rel_clock.now()
-        dt = 0.0 if self._last_update is None else now - self._last_update
+        dt = 0.0 if self._last_update is None else max(0.0, now - self._last_update)
         self._last_update = now
         state = self._odometry.update(dt, self._true_speed, self._steering_command)
         stamp = self._rel_clock.to_msg(now)

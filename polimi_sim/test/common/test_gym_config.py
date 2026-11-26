@@ -70,3 +70,12 @@ def test_a_relative_map_path_is_resolved_against_the_map_file() -> None:
     assert params['map_path'] == '/home/me/ws/maps/demo_room/room.yaml'
     shipped = build_gym_config(BASE, MAP, LIDAR, MOUNT, '/home/me/ws/config/maps')['bridge']['ros__parameters']
     assert shipped['map_path'] == 'maps/Spielberg'  # relative to the gym's share, untouched
+
+
+def test_a_rolled_laser_is_refused(tmp_path) -> None:  # noqa: ANN001
+    mount_file = tmp_path / 'mount.yaml'
+    mount_file.write_text(yaml.safe_dump({'base_link_to_laser': {**MOUNT, 'roll': 3.1416}}))
+    with pytest.raises(ValueError, match='roll 3.1416 rad is not supported'):
+        load_mount(str(mount_file))
+    mount_file.write_text(yaml.safe_dump({'base_link_to_laser': {**MOUNT, 'roll': 0.05}}))
+    assert load_mount(str(mount_file))['roll'] == 0.05

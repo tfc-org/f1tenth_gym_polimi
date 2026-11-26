@@ -98,7 +98,10 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
             logger.info(f'config: {relative[key]} <- {path} (argument)')
     path_of = {**{k: f.path for k, f in files.items()}, **{k: v for k, v in overrides.items() if v}}
     map_file, lidar_file, mount_file, gym_file = (path_of[k] for k in ('map', 'lidar', 'mount', 'gym'))
-    mount = load_mount(mount_file)
+    try:
+        mount = load_mount(mount_file)
+    except ValueError as ex:
+        raise RuntimeError(str(ex)) from ex
     body = load_body(path_of['body'])
     map_dir = os.path.dirname(map_file)
     world = {k: resolve_relative(str(v), map_dir) for k, v in load_yaml(map_file).get('world', {}).items()}

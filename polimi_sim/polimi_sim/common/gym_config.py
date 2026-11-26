@@ -11,6 +11,7 @@ import yaml
 MAP_KEYS: tuple[str, ...] = ('map_path', 'sx', 'sy', 'stheta')
 LIDAR_KEYS: tuple[str, ...] = ('fov_deg', 'resolution_deg', 'range_min', 'range_max')
 MOUNT_KEYS: tuple[str, ...] = ('x', 'y', 'z', 'yaw', 'roll')
+MAX_ROLL = 0.1
 BODY_KEYS: tuple[str, ...] = ('track_width', 'steer_max_left', 'steer_max_right')
 
 
@@ -29,10 +30,14 @@ def _require(values: dict[str, Any], keys: tuple[str, ...], what: str) -> None:
 
 
 def load_mount(path: str) -> dict[str, float]:
-    """base_link -> laser: x, y, z, yaw, roll."""
+    """base_link -> laser: x, y, z, yaw, roll. A rolled laser is refused: lidar_model and the gym cast upright."""
     mount = load_yaml(path).get('base_link_to_laser', {})
     _require(mount, MOUNT_KEYS, path)
-    return {key: float(mount[key]) for key in MOUNT_KEYS}
+    values = {key: float(mount[key]) for key in MOUNT_KEYS}
+    if abs(values['roll']) > MAX_ROLL:
+        raise ValueError(f"{path}: roll {values['roll']:.4f} rad is not supported: lidar_model and the gym cast the scan "
+                         'upright, so an upside-down laser would give a mirrored world')
+    return values
 
 
 def load_body(path: str) -> dict[str, float]:

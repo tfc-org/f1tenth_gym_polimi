@@ -5,6 +5,7 @@ import pytest
 
 from polimi_sim.common.se2 import Pose2D
 from polimi_sim.lidar.effects import (
+    EFFECT_DEFAULTS,
     CastFn,
     EffectsConfig,
     FloatArray,
@@ -12,6 +13,7 @@ from polimi_sim.lidar.effects import (
     block_bounds,
     block_center_time,
     distorted_scan,
+    effects_config,
     grazing_beams,
     incidence_angles,
     mix_pixels,
@@ -167,3 +169,15 @@ def test_config_is_validated() -> None:
         EffectsConfig(dropout_prob=1.5)
     with pytest.raises(ValueError):
         EffectsConfig(range_min=30.0)
+
+
+def test_the_node_parameters_map_onto_every_effects_field() -> None:
+    assert effects_config(EFFECT_DEFAULTS) == EffectsConfig()
+
+
+def test_a_fov_that_does_not_divide_ends_the_header_on_the_last_beam() -> None:
+    g = scan_geometry(40.0, 100.0, 0.3)
+    assert g.angle_max == pytest.approx(g.angle_min + (g.num_beams - 1) * g.angle_increment)
+    assert g.angle_max < math.radians(50.0)
+    sl450 = scan_geometry(40.0, 270.0, 0.2)
+    assert sl450.angle_max == pytest.approx(math.radians(135.0))

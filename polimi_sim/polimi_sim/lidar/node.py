@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import pathlib
 from array import array
-from typing import Any
 
 import numpy as np
 import rclpy
@@ -18,39 +17,17 @@ from polimi_sim.common.ros_utils import RelativeClock, declare, with_updates, ya
 from polimi_sim.common.se2 import Pose2D, PoseBuffer, Twist2D
 from polimi_sim.common.truth import TeleportDetector
 from polimi_sim.lidar.effects import (
+    EFFECT_DEFAULTS,
     EffectsConfig,
     ScanGeometry,
     apply_effects,
     distorted_scan,
+    effects_config,
     scan_geometry,
 )
 from polimi_sim.lidar.raycast import BlockCaster, load_gym_track, load_map_track
 
 SL450_RATES_HZ: tuple[float, ...] = (15.0, 20.0, 25.0, 30.0, 40.0)
-
-EFFECT_DEFAULTS: dict[str, Any] = {
-    'effects_enabled': True,
-    'range_min': 0.05,
-    'range_max': 25.0,
-    'no_return_value': 'inf',
-    'noise_std': 0.01,
-    'dropout_prob': 0.002,
-    'grazing_max_deg': 80.0,
-    'grazing_dropout_prob': 0.5,
-    'reflectivity_range_max': 15.0,
-    'mixed_pixel_jump': 0.3,
-    'mixed_pixel_prob': 0.3,
-}
-
-
-def effects_config(values: dict[str, Any]) -> EffectsConfig:
-    fields = {k: v for k, v in values.items() if k not in ('effects_enabled', 'no_return_value')}
-    return EffectsConfig(
-        enabled=bool(values['effects_enabled']),
-        no_return_value=float(values['no_return_value']),
-        **fields,
-    )
-
 
 class LidarModelNode(Node):
     def __init__(self) -> None:
