@@ -3,7 +3,7 @@
 <package format="3">
   <name>polimi_sim</name>
   <version>0.1.0</version>
-  <description>Car-faithful layer on top of f1tenth_gym_ros: LiDAR, actuation and wheel-odometry models, the car's mux and frames.</description>
+  <description>Car-faithful layer on top of f1tenth_gym_ros: LiDAR, camera, actuation and wheel-odometry models, the car's mux and frames.</description>
   <maintainer email="tommasofabrizio.costantini@mail.polimi.it">TF-Costantini</maintainer>
   <license>MIT</license>
 
@@ -21,7 +21,9 @@
   <exec_depend>ackermann_mux</exec_depend>
   <exec_depend>f1tenth_stack</exec_depend>
   <exec_depend>f1tenth_gym_ros</exec_depend>
-  <!-- Also needs f1tenth_gym (pip). Not listed: rosdep has no key for it. -->
+  <!-- Also needs f1tenth_gym (pip), and its pip dependencies opencv-python (cv2) and Pillow, which the
+       camera and the world generator use. Not listed: rosdep has no key for f1tenth_gym, and apt's
+       python3-opencv would shadow the gym's copy. -->
 
   <test_depend>python3-pytest</test_depend>
 

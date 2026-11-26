@@ -1,0 +1,11 @@
+# Default: stock f1tenth / datasheet values, not a measured car. Pass config_dir:= for a real car.
+# Camera mount, base_link (rear axle) -> camera_link. Shared by the simulator and, later, the car bringup.
+# [DECIDE] O-20 with render_frame --footprint, then [MEASURE] plan 04 test 18. Placeholder (user, 26 Nov 2026):
+# the 11 Oct prototype's view, just behind the laser.
+base_link_to_camera_link:
+  x: 0.20     # m, forward
+  y: 0.0      # m, left
+  z: 0.20     # m, up
+  roll: 0.0   # rad
+  pitch: 0.2618  # rad, 15 deg nose down (ROS: positive pitch tilts x towards -z)
+  yaw: 0.0    # rad

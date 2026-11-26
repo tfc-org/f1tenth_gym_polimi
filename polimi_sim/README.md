@@ -1,6 +1,6 @@
 # polimi_sim
 
-The simulator as the car: f1tenth_gym_ros (the package next to this folder) plus models of the car's LiDAR, actuation and wheel odometry, the car's own command mux and its frames. The stack talks to it through the same topics and frames as on the real car.
+The simulator as the car: f1tenth_gym_ros (the package next to this folder) plus models of the car's LiDAR, camera, actuation and wheel odometry, the car's own command mux and its frames. The stack talks to it through the same topics and frames as on the real car.
 
 The design (each model, its parameters, the frames, the known limits) is in `TDD_Gym`, in [f1tenth_polimi](https://github.com/tfc-org/f1tenth_polimi) under `docs/software/PDF_Documentation/sim/`.
 
@@ -29,6 +29,8 @@ ros2 launch polimi_sim sim_car.launch.py config_dir:=$HOME/ws/config    # a real
 | `lidar/sl450.yaml` | the laser model |
 | `car/laser_mount.yaml` | `base_link` to `laser` |
 | `car/body.yaml` | track width and the servo clamp on each side |
+| `camera/gemini_335l.yaml` | camera profile (`720p30`), intrinsics, `plumb_bob` distortion |
+| `car/camera_mount.yaml` | `base_link` to `camera_link` (placeholder until chosen and measured) |
 | `actuation_model.yaml`, `odom_model.yaml`, `teleop_bridge.yaml` | the other models |
 
 With `config_dir:=<dir>`, each file is taken from `<dir>/<same path>` if it exists, else from the defaults. The launch logs where each one came from:
@@ -39,11 +41,13 @@ config: sim/gym.yaml <- defaults
 config: 2 from /home/me/ws/config, 5 defaults
 ```
 
-It warns when `config_dir` lacks one of the measured car's files (`car/`, `lidar/`); the other defaults are expected. `actuation_params:=`, `odom_params:=` and `teleop_params:=` take a model file directly.
+It warns when `config_dir` lacks one of the measured car's files (`car/`, `lidar/`, `camera/`); the other defaults are expected. `actuation_params:=`, `odom_params:=` and `teleop_params:=` take a model file directly.
 
 ## Room worlds and evaluation
 
 - `ros2 run polimi_sim make_world <maps>/src/<world>.yaml --config-dir <config>` turns one source file (room, objects, taped track, start) into `<maps>/<world>/` (collision map, LiDAR slice, `scene.yaml`, `tape.yaml`, `centerline.csv`) and `<config>/maps/<world>.yaml`. The launch does it at every start when `<maps_dir>/src/<map>.yaml` exists (`maps_dir:=`, default `~/ws/maps`).
+- On such a map, `camera_model` draws the Gemini 335L colour stream from the world at the truth pose: `/camera/color/image_raw` (`rgb8`, 30 Hz) and `camera_info`, with the TFs `base_link -> camera_link -> camera_color_optical_frame`; `camera:=none` switches it off. In Foxglove use the JPEG preview `/camera/color/image_raw/compressed` (10 Hz, half size, encoded only while subscribed), never the raw topic. It writes its render-speed benchmark to `~/ws/runs/benchmarks/` after 60 s.
+- `ros2 run polimi_sim render_frame <world> --pose x y yaw --out frame.png` draws one frame without ROS; `--footprint` prints the floor the camera mount sees and where the tape lines come into view.
 - On such a map, `world_publisher` draws the tape on `/sim/truth/tape` and `track_monitor` publishes `/sim/eval/*` and `/sim/health/*` and writes a CSV line per lap to `~/ws/runs`. `sim_reset` (every map) serves `/sim/reset` and `/sim/reset_pose`.
 
 ## Truth frame and the stack's topics
