@@ -44,7 +44,14 @@ def declare(node: Node, defaults: dict[str, Any]) -> dict[str, Any]:
 
 
 def with_updates(node: Node, names: Iterable[str], updates: list[Parameter]) -> dict[str, Any]:
-    """Current values of `names`, overridden by the parameters being set."""
+    """Current values of `names`, overridden by the parameters being set.
+
+    Raises ValueError naming any parameter being set that is not in `names`: it is read once at
+    start, so accepting a new value would report a change that never happens.
+    """
     values = {name: node.get_parameter(name).value for name in names}
+    fixed = sorted({p.name for p in updates} - values.keys())
+    if fixed:
+        raise ValueError(f'fixed at start, restart the node to change: {", ".join(fixed)}')
     values.update({p.name: p.value for p in updates if p.name in values})
     return values

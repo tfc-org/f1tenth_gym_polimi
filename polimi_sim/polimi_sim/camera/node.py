@@ -16,12 +16,14 @@ from nav_msgs.msg import Odometry
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor
 from rclpy.node import Node
+from rclpy.parameter import Parameter
+from rcl_interfaces.msg import SetParametersResult
 from sensor_msgs.msg import CameraInfo, CompressedImage, Image
 
 from polimi_sim.camera.draw import Renderer
 from polimi_sim.camera.intrinsics import camera_in_world, load_camera, optical_mount
 from polimi_sim.camera.scene import load_scene
-from polimi_sim.common.ros_utils import RelativeClock, declare, yaw_from_quaternion
+from polimi_sim.common.ros_utils import RelativeClock, declare, with_updates, yaw_from_quaternion
 from polimi_sim.common.se2 import Pose2D, PoseBuffer, Twist2D
 from polimi_sim.common.truth import TeleportDetector
 
@@ -93,6 +95,7 @@ class CameraModelNode(Node):
                                 r=[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
                                 p=[k.fx, 0.0, k.cx, 0.0, 0.0, k.fy, k.cy, 0.0, 0.0, 0.0, 1.0, 0.0])
         self._info.header.frame_id = self._frame_id
+        self.add_on_set_parameters_callback(self._on_set_parameters)
         self._image_pub = self.create_publisher(Image, p['image_topic'], 10)
         self._info_pub = self.create_publisher(CameraInfo, p['info_topic'], 10)
         self._preview_pub = self.create_publisher(CompressedImage, p['image_topic'] + '/compressed', 10)
@@ -103,6 +106,13 @@ class CameraModelNode(Node):
             f'{camera.profile}: {k.width}x{k.height} rgb8 at {camera.rate_hz:g} Hz on {p["image_topic"]}, '
             f'preview on {p["image_topic"]}/compressed while subscribed'
         )
+
+    def _on_set_parameters(self, params: list[Parameter]) -> SetParametersResult:
+        try:
+            with_updates(self, (), params)
+        except ValueError as ex:
+            return SetParametersResult(successful=False, reason=str(ex))
+        return SetParametersResult(successful=True)
 
     def _on_truth(self, msg: Odometry) -> None:
         pose = Pose2D(msg.pose.pose.position.x, msg.pose.pose.position.y, yaw_from_quaternion(msg.pose.pose.orientation))
