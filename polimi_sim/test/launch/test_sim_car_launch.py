@@ -1,5 +1,6 @@
 """The gym's remaps name their node, stay inside the group, and polimi_sim starts no foxglove_bridge."""
 import importlib.util
+import math
 import pathlib
 from types import ModuleType
 
@@ -39,3 +40,13 @@ def test_the_gym_remaps_name_their_node_and_stay_in_the_group() -> None:
 
 def test_polimi_sim_starts_no_foxglove_bridge_of_its_own() -> None:
     assert "package='foxglove_bridge'" not in LAUNCH_FILE.read_text()
+
+
+def test_the_camera_tfs_use_the_mount_and_the_optical_rotation_the_drawing_uses() -> None:
+    mount = {'x': 0.2, 'y': 0.0, 'z': 0.2, 'roll': 0.0, 'pitch': 0.2618, 'yaw': 0.0}
+    mount_args, optical_args = _launch_module().camera_tf_arguments(mount, (0.0, -0.02375, 0.0))
+    assert mount_args == ['--x', '0.2', '--y', '0.0', '--z', '0.2', '--roll', '0.0', '--pitch', '0.2618', '--yaw', '0.0',
+                          '--frame-id', 'base_link', '--child-frame-id', 'camera_link']
+    half_pi = str(-math.pi / 2)
+    assert optical_args == ['--x', '0.0', '--y', '-0.02375', '--z', '0.0', '--roll', half_pi, '--pitch', '0.0', '--yaw', half_pi,
+                            '--frame-id', 'camera_link', '--child-frame-id', 'camera_color_optical_frame']

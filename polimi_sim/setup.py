@@ -33,6 +33,8 @@ setup(
             'world_publisher = polimi_sim.world.publisher:main',
             'track_monitor = polimi_sim.eval.node:main',
             'sim_reset = polimi_sim.common.reset_node:main',
+            'camera_model = polimi_sim.camera.node:main',
+            'render_frame = polimi_sim.camera.render_frame:main',
         ],
     },
 )

@@ -12,6 +12,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node, SetRemap
 
+from polimi_sim.camera.intrinsics import OPTICAL_RPY, load_camera, load_camera_mount
 from polimi_sim.common.gym_config import (
     build_gym_config,
     load_body,
@@ -77,8 +78,13 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
         'actuation': 'actuation_model.yaml', 'odom': 'odom_model.yaml', 'teleop': 'teleop_bridge.yaml',
     }
     overrides = {'actuation': arg('actuation_params'), 'odom': arg('odom_params'), 'teleop': arg('teleop_params')}
+    camera = arg('camera')
     try:
         files = {k: resolve(rel, config_dir, defaults) for k, rel in relative.items() if not overrides.get(k)}
+        has_scene = 'scene' in load_yaml(files['map'].path).get('world', {})
+        if has_scene and camera != 'none':
+            files['camera'] = resolve(f'camera/{camera}.yaml', config_dir, defaults)
+            files['camera_mount'] = resolve('car/camera_mount.yaml', config_dir, defaults)
     except FileNotFoundError as ex:
         raise RuntimeError(str(ex)) from ex
     info, warnings = report(list(files.values()), config_dir)
@@ -169,7 +175,43 @@ def _setup(context: LaunchContext) -> list[LaunchDescriptionEntity]:
             parameters=[{'tape': world['tape'], 'world': arg('map'), 'lr': preset.lr,
                          'track_width': body['track_width']}],
         ))
+    if 'camera' in path_of:
+        nodes += _camera_nodes(path_of['camera'], path_of['camera_mount'], arg('camera_profile'), world, arg('map'))
+    elif not has_scene:
+        logger.info(f"camera: off, maps/{arg('map')}.yaml has no world: block (the camera draws room worlds only)")
+    else:
+        logger.info('camera: off (camera:=none)')
     return nodes
+
+
+def camera_tf_arguments(mount: dict[str, float], color_in_link: tuple[float, float, float]) -> tuple[list[str], list[str]]:
+    """static_transform_publisher arguments: base_link -> camera_link (the mount), camera_link -> colour optical frame."""
+    keys = ('x', 'y', 'z', 'roll', 'pitch', 'yaw')
+    optical = dict(zip(keys, (*color_in_link, *OPTICAL_RPY), strict=True))
+    return ([a for k in keys for a in (f'--{k}', str(mount[k]))] + ['--frame-id', 'base_link', '--child-frame-id', 'camera_link'],
+            [a for k in keys for a in (f'--{k}', str(optical[k]))]
+            + ['--frame-id', 'camera_link', '--child-frame-id', 'camera_color_optical_frame'])
+
+
+def _camera_nodes(camera_file: str, mount_file: str, profile: str, world: dict[str, str], name: str) -> list[Node]:
+    """camera_model and the camera's static TFs: base_link -> camera_link (the mount), camera_link -> optical frame."""
+    try:
+        camera = load_camera(camera_file, profile)
+        mount = load_camera_mount(mount_file)
+    except ValueError as ex:
+        raise RuntimeError(str(ex)) from ex
+    mount_args, optical_args = camera_tf_arguments(mount, camera.color_in_link)
+    return [
+        Node(package='tf2_ros', executable='static_transform_publisher', name='static_baselink_to_camera_link',
+             arguments=mount_args),
+        Node(package='tf2_ros', executable='static_transform_publisher', name='static_camera_link_to_color_optical',
+             arguments=optical_args),
+        Node(
+            package='polimi_sim', executable='camera_model', name='camera_model', output='screen',
+            parameters=[{'scene': world['scene'], 'tape': world['tape'], 'camera_file': camera_file, 'profile': camera.profile,
+                         'world': name, **{f'mount_{key}': value for key, value in mount.items()}}],
+        ),
+    ]
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -183,6 +225,8 @@ def generate_launch_description() -> LaunchDescription:
         ('teleop_params', '', 'teleop_bridge parameter file; empty = teleop_bridge.yaml from the overlay.'),
         ('ideal', 'false', 'true: no sensor or actuator imperfections, and debug_map_to_odom truth.'),
         ('debug_map_to_odom', 'off', 'map -> odom for debugging: off | static | truth. off with SLAM.'),
+        ('camera', 'gemini_335l', 'Camera: a file name in camera/, drawn on a map with a world: block; none = no camera.'),
+        ('camera_profile', '', "The camera file's profile (720p30); empty = the file's own."),
     ]
     return LaunchDescription([
         *[DeclareLaunchArgument(n, default_value=d, description=h) for n, d, h in arguments],
